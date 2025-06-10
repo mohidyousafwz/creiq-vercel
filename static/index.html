@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Roll Numbers CSV</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Upload Roll Numbers</h1>
+    <form id="upload-form">
+      <input type="file" id="file-input" name="file" accept=".csv" required />
+      <label for="file-input" id="file-label">Choose CSV file</label>
+      <button type="submit">Upload</button>
+    </form>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const fileInput = document.getElementById('file-input');
+    const fileLabel = document.getElementById('file-label');
+    const resultDiv = document.getElementById('result');
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        fileLabel.textContent = fileInput.files[0].name;
+      } else {
+        fileLabel.textContent = 'Choose CSV file';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!fileInput.files.length) {
+        resultDiv.textContent = 'Please select a CSV file.';
+        return;
+      }
+      resultDiv.textContent = 'Uploading...';
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/upload-roll-numbers', {
+          method: 'POST',
+          body: formData
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText);
+        }
+        const data = await response.json();
+        resultDiv.innerHTML = `
+          <p>Found <strong>${data.count}</strong> roll numbers.</p>
+          <p>Processing has started in the background.</p>
+        `;
+      } catch (err) {
+        resultDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
