@@ -10,6 +10,13 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
 
+# Fix for Windows asyncio issues
+import sys
+import asyncio
+if sys.platform == 'win32':
+    # Set Windows ProactorEventLoop to prevent NotImplementedError
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 # Configure logger for automation (use Uvicorn error logger)
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.INFO)
@@ -75,7 +82,40 @@ class PlaywrightAutomation:
                 '--ignore-certificate-errors', '--ignore-ssl-errors', 
                 '--ignore-certificate-errors-spki-list', '--ignore-ssl-errors-types'
             ]
-            self.browser = self.playwright.firefox.launch(headless=self.headless, args=launch_args) # Added launch_args
+            
+            # Try to launch browsers in order of preference
+            browsers_to_try = [
+                ('chromium', self.playwright.chromium),
+                ('firefox', self.playwright.firefox),
+                ('webkit', self.playwright.webkit)
+            ]
+            
+            browser_launched = False
+            last_error = None
+            
+            for browser_name, browser_type in browsers_to_try:
+                try:
+                    logger.info(f"Attempting to launch {browser_name}...")
+                    self.browser = browser_type.launch(
+                        headless=self.headless,
+                        args=launch_args if browser_name != 'webkit' else [],  # WebKit doesn't support all args
+                        timeout=60000  # Increase timeout to 60 seconds
+                    )
+                    logger.info(f"Successfully launched {browser_name}")
+                    browser_launched = True
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Failed to launch {browser_name}: {str(e)}")
+                    continue
+            
+            if not browser_launched:
+                logger.error("Failed to launch any browser")
+                logger.error("Please run 'python -m playwright install' to install browsers")
+                if last_error:
+                    raise last_error
+                else:
+                    raise RuntimeError("No browsers could be launched")
             
             self._check_shutdown() 
             logger.info("Creating browser context...")
@@ -92,7 +132,9 @@ class PlaywrightAutomation:
         except GracefulShutdownException: 
             raise
         except Exception as e:
-            logger.error(f"Error starting browser: {e}")
+            logger.error(f"Error starting browser: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self.close() 
             raise
     
@@ -144,7 +186,8 @@ class PlaywrightAutomation:
                  raise GracefulShutdownException("Shutdown before page initialization for entering roll number.")
             raise RuntimeError("Browser not started. Call start_browser() first.")
         
-        digits_only = re.sub(r'\\D', '', roll_number)
+        # Remove all non-digit characters (including dashes)
+        digits_only = re.sub(r'\D', '', roll_number)
         if len(digits_only) != 19:
             logger.warning(f"Roll number '{roll_number}' (parsed as '{digits_only}') does not have 19 digits. Got {len(digits_only)}. Adjusting...")
             digits_only = digits_only.ljust(19, '0')[:19] # Pad or truncate to 19 digits
@@ -212,7 +255,7 @@ class PlaywrightAutomation:
             logger.error(f"Error saving HTML content to {file_path}: {e}")
             # Do not raise here if this is an auxiliary function and failure is not critical for the main flow
     
-    def extract_data_to_json(self, roll_number: str) -> Dict[str, Any]: # Renamed from extract_appeals_data
+    def extract_data_to_json(self, roll_number: str) -> Dict[str, Any]:
         """
         Extract data from the current page and return it as a dictionary.
         """
@@ -223,32 +266,309 @@ class PlaywrightAutomation:
         data: Dict[str, Any] = {
             "roll_number": roll_number,
             "extracted_timestamp": datetime.datetime.now().isoformat(),
-            "page_title": "", "property_info": {}, "appeal_info": [], "raw_tables": []
+            "page_title": "", 
+            "property_info": {},
+            "appeal_info": []
         }
         
         try:
             data["page_title"] = self.page.title()
             self._check_shutdown()
 
-            # Example: Extract property address (adjust selectors as per actual page structure)
-            # This part is highly dependent on the website's structure.
-            # The selectors used in the original file might need review.
-            # For instance:
-            # property_address_loc = self.page.locator('td:has-text("Property Address:") + td').first
-            # if property_address_loc.is_visible(timeout=500): # Check visibility
-            #    data["property_info"]["address"] = property_address_loc.text_content().strip()
+            # Extract property description - look for the text after "Location & Property Description:"
+            try:
+                # Try multiple selectors to find the property description
+                selectors = [
+                    # Find the label div, then get its next sibling
+                    'div.col-md-3:has(strong:has-text("Location & Property Description:")) + div.col-md-3',
+                    # Alternative with has-text on the div itself
+                    'div.col-md-3:has-text("Location & Property Description:") + div.col-md-3',
+                    # Try with partial text match using strong tag
+                    'div.col-md-3:has(strong:has-text("Location")) + div.col-md-3',
+                    # Try xpath-based approach for sibling (fallback)
+                    'xpath=//div[contains(@class, "col-md-3") and contains(., "Location") and contains(., "Property Description:")]/following-sibling::div[contains(@class, "col-md-3")]'
+                ]
+                
+                desc_element = None
+                for selector in selectors:
+                    try:
+                        desc_element = self.page.query_selector(selector)
+                        if desc_element:
+                            # Make sure we're not getting the label itself
+                            text = desc_element.text_content().strip()
+                            if text and "Location" not in text and "Property Description" not in text:
+                                data["property_info"]["description"] = text
+                                logger.info(f"Found property description: {data['property_info']['description']}")
+                                break
+                    except:
+                        continue
+                        
+                if not desc_element or not data["property_info"].get("description"):
+                    logger.warning("Could not extract property description with any selector")
+            except Exception as e:
+                logger.warning(f"Could not extract property description: {e}")
             
-            # Placeholder for actual data extraction logic
-            logger.info(f"Extracting data for {roll_number} (actual extraction logic needs to be robust)...")
-            # This is where you'd populate data["property_info"], data["appeal_info"], data["raw_tables"]
-            # For now, it returns a partially filled structure.
-
+            # Extract appeal information from the main table
+            try:
+                # Look for the main appeals table
+                table = self.page.query_selector('#MainContent_GridView1')
+                if table:
+                    # Get all rows except header
+                    rows = table.query_selector_all('tr')[1:]  # Skip header row
+                    logger.info(f"Found {len(rows)} appeal rows in the table")
+                    
+                    for row in rows:
+                        try:
+                            cells = row.query_selector_all('td')
+                            if len(cells) >= 9:  # Ensure we have all expected columns
+                                appeal_dict = {
+                                    "appealnumber": "",
+                                    "appellant": "",
+                                    "representative": "",
+                                    "section": "",
+                                    "tax_date": "",
+                                    "hearing_number": "",
+                                    "hearing_date": "",
+                                    "status": "",
+                                    "board_order_number": ""
+                                }
+                                
+                                # Extract appeal number from link
+                                appeal_link = cells[0].query_selector('a')
+                                if appeal_link:
+                                    appeal_dict["appealnumber"] = appeal_link.text_content().strip()
+                                
+                                # Extract other fields
+                                appeal_dict["appellant"] = cells[1].text_content().strip()
+                                appeal_dict["representative"] = cells[2].text_content().strip()
+                                appeal_dict["section"] = cells[3].text_content().strip()
+                                appeal_dict["tax_date"] = cells[4].text_content().strip()
+                                
+                                # Hearing number might be in a link or just text
+                                hearing_link = cells[5].query_selector('a')
+                                if hearing_link:
+                                    appeal_dict["hearing_number"] = hearing_link.text_content().strip()
+                                else:
+                                    appeal_dict["hearing_number"] = cells[5].text_content().strip()
+                                
+                                appeal_dict["hearing_date"] = cells[6].text_content().strip()
+                                appeal_dict["status"] = cells[7].text_content().strip()
+                                appeal_dict["board_order_number"] = cells[8].text_content().strip()
+                                
+                                # Clean up empty fields (replace &nbsp; or empty strings)
+                                for key in appeal_dict:
+                                    if appeal_dict[key] == '\u00a0' or appeal_dict[key] == ' ':
+                                        appeal_dict[key] = ""
+                                
+                                data["appeal_info"].append(appeal_dict)
+                                
+                        except Exception as e:
+                            logger.warning(f"Error processing appeal row: {e}")
+                            continue
+                
+                else:
+                    logger.warning("Could not find appeals table #MainContent_GridView1")
+                    
+            except Exception as e:
+                logger.error(f"Error extracting appeal table data: {e}")
+            
+            logger.info(f"Extracted {len(data['appeal_info'])} appeals from the page")
+            
             return data
+            
         except GracefulShutdownException:
             raise
         except Exception as e:
             logger.error(f"Error extracting data to JSON for {roll_number}: {e}")
-            return data # Return partially filled data or an error structure
+            return data # Return partially filled data
+
+    def extract_all_appeal_details(self, appeals_data: Dict[str, Any], output_dir: str) -> Dict[str, Any]:
+        """
+        Extract detailed information for each appeal by navigating to individual appeal pages.
+        """
+        all_appeals_details = {
+            "roll_number": appeals_data.get("roll_number", ""),
+            "extracted_timestamp": appeals_data.get("extracted_timestamp", datetime.datetime.now().isoformat()),
+            "page_title": appeals_data.get("page_title", ""),
+            "property_info": appeals_data.get("property_info", {}),
+            "appeals": []
+        }
+        
+        if not self.page:
+            logger.error("Page not initialized for extracting appeal details")
+            return all_appeals_details
+        
+        # Process each appeal from the appeals_data
+        appeals = appeals_data.get("appeal_info", [])
+        logger.info(f"Processing {len(appeals)} appeals for detailed extraction")
+        
+        for idx, appeal in enumerate(appeals):
+            self._check_shutdown()
+            
+            try:
+                appeal_number = appeal.get("appealnumber", "")
+                if not appeal_number:
+                    logger.warning(f"No appeal number found for appeal {idx}")
+                    continue
+                    
+                logger.info(f"Processing appeal {idx+1}/{len(appeals)}: {appeal_number}")
+                
+                # Click on the appeal link to navigate to detail page
+                try:
+                    # Use the specific appeal link format
+                    appeal_link_selector = f'a[href*="ComplaintDetail.aspx?AppealNo={appeal_number}"]'
+                    self.page.click(appeal_link_selector)
+                    self._check_shutdown()
+                    
+                    # Wait for the detail page to load
+                    self.page.wait_for_load_state("networkidle", timeout=20000)
+                    
+                except Exception as e:
+                    logger.error(f"Could not navigate to appeal {appeal_number}: {e}")
+                    continue
+                
+                # Extract detailed appeal information
+                appeal_detail = {
+                    "appeal_number": appeal_number,
+                    "extracted_timestamp": datetime.datetime.now().isoformat(),
+                    "property_info": {},
+                    "appellant_info": {},
+                    "status_info": {},
+                    "decision_info": {}
+                }
+                
+                # Extract property information using the specific row structure
+                property_mappings = [
+                    ('roll_number', 'Property Roll Number:'),
+                    ('municipality', 'Municipality:'),
+                    ('classification', 'Property Classification:'),
+                    ('nbhd', 'NBHD:')
+                ]
+                
+                # Handle description separately due to HTML entity issues
+                for field_name, label_text in property_mappings:
+                    try:
+                        # Look for the row containing the label, then get the value from the next column
+                        selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                        element = self.page.query_selector(selector)
+                        if element:
+                            value = element.text_content().strip()
+                            # For roll number, extract from link if present
+                            if field_name == 'roll_number':
+                                link = element.query_selector('a')
+                                if link:
+                                    value = link.text_content().strip()
+                            appeal_detail["property_info"][field_name] = value
+                    except Exception as e:
+                        logger.debug(f"Could not extract {field_name}: {e}")
+                
+                # Extract property description with special handling
+                try:
+                    desc_selectors = [
+                        # Find the label div, then get its next sibling (for col-md-4 structure on detail pages)
+                        'div.col-md-4:has(strong:has-text("Location & Property Description:")) + div.col-md-4',
+                        'div.col-md-4:has-text("Location & Property Description:") + div.col-md-4',
+                        'div.col-md-4:has(strong:has-text("Location")) + div.col-md-4',
+                        # Fallback to row-based selectors if the sibling approach doesn't work
+                        'div.row:has(div:has-text("Location & Property Description:")) div.col-md-4:last-child',
+                        'div.row:has(div:has-text("Location") :has-text("Property Description:")) div.col-md-4:last-child'
+                    ]
+                    
+                    for selector in desc_selectors:
+                        try:
+                            desc_element = self.page.query_selector(selector)
+                            if desc_element:
+                                text = desc_element.text_content().strip()
+                                if text and "Location" not in text and "Property Description" not in text:
+                                    appeal_detail["property_info"]["description"] = text
+                                    break
+                        except:
+                            continue
+                except Exception as e:
+                    logger.debug(f"Could not extract property description: {e}")
+                
+                # Extract appellant information
+                appellant_mappings = [
+                    ('name1', 'Name1:'),
+                    ('name2', 'Name2:'),
+                    ('representative', 'Name of Representative:'),
+                    ('filing_date', 'Filing Date:'),
+                    ('tax_date', 'Tax Date:'),
+                    ('section', 'Section:'),
+                    ('reason_for_appeal', 'Reason for Appeal:')
+                ]
+                
+                for field_name, label_text in appellant_mappings:
+                    try:
+                        selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                        element = self.page.query_selector(selector)
+                        if element:
+                            value = element.text_content().strip()
+                            # Clean up line breaks in reason for appeal
+                            if field_name == 'reason_for_appeal':
+                                value = value.replace('\n', '')
+                            appeal_detail["appellant_info"][field_name] = value
+                    except Exception as e:
+                        logger.debug(f"Could not extract {field_name}: {e}")
+                
+                # Extract status information
+                try:
+                    status_selector = 'div.row:has(div:has-text("Status:")) div.col-md-4:nth-child(2)'
+                    status_element = self.page.query_selector(status_selector)
+                    if status_element:
+                        appeal_detail["status_info"]["status"] = status_element.text_content().strip()
+                except Exception as e:
+                    logger.debug(f"Could not extract status: {e}")
+                
+                # Extract decision information
+                decision_mappings = [
+                    ('decision_number', 'Decision Number:'),
+                    ('mailing_date', 'Decision Mailing Date:'),
+                    ('decisions', 'Decision(s):'),
+                    ('decision_details', 'DecisionDetails:')
+                ]
+                
+                for field_name, label_text in decision_mappings:
+                    try:
+                        selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                        element = self.page.query_selector(selector)
+                        if element:
+                            value = element.text_content().strip()
+                            # Clean up line breaks in decisions and decision_details
+                            if field_name in ['decisions', 'decision_details']:
+                                value = value.replace('\n', '')
+                            appeal_detail["decision_info"][field_name] = value
+                    except Exception as e:
+                        logger.debug(f"Could not extract {field_name}: {e}")
+                
+                # Take a screenshot of the detail page if needed
+                try:
+                    screenshot_path = os.path.join(output_dir, f"appeal_{appeal_number}_detail.png")
+                    self.take_screenshot(screenshot_path)
+                except:
+                    pass
+                
+                all_appeals_details["appeals"].append(appeal_detail)
+                
+                # Navigate back to the appeals list
+                try:
+                    self.page.go_back()
+                    self.page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception as e:
+                    logger.warning(f"Error navigating back from appeal {appeal_number}: {e}")
+                    # Try to navigate to the main page again
+                    self.navigate_to_site()
+                
+            except Exception as e:
+                logger.error(f"Error processing appeal {appeal_number}: {e}")
+                # Try to recover
+                try:
+                    self.navigate_to_site()
+                except:
+                    pass
+        
+        logger.info(f"Extracted details for {len(all_appeals_details['appeals'])} appeals")
+        return all_appeals_details
 
     def save_json_data(self, data: Dict[str, Any], file_path: str) -> None:
         """
@@ -265,6 +585,30 @@ class PlaywrightAutomation:
         except Exception as e:
             logger.error(f"Error saving JSON data to {file_path}: {e}")
 
+    def is_browser_alive(self) -> bool:
+        """
+        Check if the browser is still alive and responsive.
+        """
+        try:
+            if not self.page:
+                return False
+            # Try to get the title - if this fails, browser is dead
+            _ = self.page.title()
+            return True
+        except:
+            return False
+    
+    def restart_browser(self) -> None:
+        """
+        Restart the browser if it has crashed.
+        """
+        logger.info("Restarting browser...")
+        self.close()  # Clean up any existing resources
+        time.sleep(2)  # Brief pause
+        self.start_browser()
+        self.navigate_to_site()
+        logger.info("Browser restarted successfully")
+    
     def process_roll_numbers(self, roll_numbers: List[str], results_base_dir: str) -> None:
         """
         Process a list of roll numbers: enter each, extract data, and save.
@@ -282,7 +626,8 @@ class PlaywrightAutomation:
             self._check_shutdown() 
             
             logger.info(f"Processing roll number {i+1}/{total_roll_numbers}: {roll_number}")
-            safe_roll_number_dir = re.sub(r'[^a-zA-Z0-9_\\-]', '_', roll_number)
+            # Preserve the original roll number format for directory naming
+            safe_roll_number_dir = roll_number.replace('/', '_').replace('\\', '_').replace(':', '_')
             roll_number_results_dir = os.path.join(results_base_dir, safe_roll_number_dir)
             os.makedirs(roll_number_results_dir, exist_ok=True)
             
@@ -301,43 +646,99 @@ class PlaywrightAutomation:
                     continue 
                 self._check_shutdown() 
 
-                # Wait for results to load or error message
-                # Using a general selector that appears on result/error pages
-                self.page.wait_for_selector("#MainContent_lblErr, #some_results_table_id", timeout=30000) 
-                self._check_shutdown() 
-
-                error_message_element = self.page.query_selector("#MainContent_lblErr")
-                if error_message_element and error_message_element.is_visible():
-                    error_message = error_message_element.text_content()
-                    if error_message and "No records found" in error_message: # Make this check more robust
-                        logger.info(f"No records found for roll number: {roll_number}")
-                        no_records_file = os.path.join(roll_number_results_dir, "no_records_found.txt")
-                        with open(no_records_file, 'w', encoding='utf-8') as f:
-                            f.write(f"No records found for roll number: {roll_number} at {datetime.datetime.now()}")
-                        self.navigate_to_site() # Reset for next
+                # Wait for page to change after submission
+                try:
+                    # First, wait for any network activity to settle
+                    self.page.wait_for_load_state("networkidle", timeout=10000)
+                    logger.info("Page loaded after search submission")
+                    
+                    # Take a screenshot for debugging
+                    screenshot_path = os.path.join(roll_number_results_dir, "after_search.png")
+                    self.take_screenshot(screenshot_path)
+                    
+                    # Log the current page title and URL for debugging
+                    current_title = self.page.title()
+                    current_url = self.page.url
+                    logger.info(f"Current page title: '{current_title}'")
+                    logger.info(f"Current URL: {current_url}")
+                    
+                    # Check for common error indicators
+                    error_selectors = [
+                        "#MainContent_lblErr",  # Error label
+                        "span:has-text('No records found')",
+                        "div.error-message",
+                        "div.alert-danger"
+                    ]
+                    
+                    error_found = False
+                    for selector in error_selectors:
+                        try:
+                            error_element = self.page.query_selector(selector)
+                            if error_element and error_element.is_visible():
+                                error_text = error_element.text_content()
+                                logger.info(f"Found error element with selector '{selector}': {error_text}")
+                                if "No records found" in error_text or "no result" in error_text.lower():
+                                    logger.info(f"No records found for roll number: {roll_number}")
+                                    no_records_file = os.path.join(roll_number_results_dir, "no_records_found.txt")
+                                    with open(no_records_file, 'w', encoding='utf-8') as f:
+                                        f.write(f"No records found for roll number: {roll_number} at {datetime.datetime.now()}\nError text: {error_text}")
+                                    error_found = True
+                                    break
+                        except:
+                            continue
+                    
+                    if error_found:
+                        self.navigate_to_site()  # Reset for next
                         continue
+                    
+                    # If no error, assume we have results
+                    logger.info("No error found, proceeding with data extraction")
+                    
+                except Exception as wait_error:
+                    logger.error(f"Error waiting for page after search: {wait_error}")
+                    # Save the current page HTML for debugging
+                    debug_html_path = os.path.join(roll_number_results_dir, "debug_page.html")
+                    self.save_html_content(debug_html_path)
                 
-                self._check_shutdown() 
+                self._check_shutdown()
+                
                 # Corrected method name and variable name
                 extracted_data = self.extract_data_to_json(roll_number) 
                 self._check_shutdown() 
                 
-                data_file = os.path.join(roll_number_results_dir, "extracted_data.json") # Generic name
-                self.save_json_data(extracted_data, data_file) # Use the new save method
-                logger.info(f"Saved extracted data for {roll_number} to {data_file}")
+                # Extract detailed appeal information if appeals were found
+                if extracted_data.get("appeal_info") and len(extracted_data["appeal_info"]) > 0:
+                    logger.info(f"Extracting detailed information for {len(extracted_data['appeal_info'])} appeals...")
+                    self._check_shutdown() 
+                    
+                    all_details = self.extract_all_appeal_details(extracted_data, roll_number_results_dir)
+                    self._check_shutdown() 
+                    
+                    all_details_file = os.path.join(roll_number_results_dir, "all_appeal_details.json")
+                    self.save_json_data(all_details, all_details_file)
+                    logger.info(f"Saved all appeal details for {roll_number} to {all_details_file}")
+                    
+                    # After extracting details, we need to navigate back to the main page
+                    # and re-enter the roll number to ensure we're on the appeals listing page
+                    # for the next roll number
+                    logger.info(f"Navigating back to main page after processing appeals for {roll_number}")
+                    self.navigate_to_site()
+                else:
+                    logger.info(f"No appeals found for {roll_number}, saving property information only")
+                    # Create consolidated structure even when no appeals exist
+                    no_appeals_data = {
+                        "roll_number": extracted_data.get("roll_number", ""),
+                        "extracted_timestamp": extracted_data.get("extracted_timestamp", ""),
+                        "page_title": extracted_data.get("page_title", ""),
+                        "property_info": extracted_data.get("property_info", {}),
+                        "appeals": []
+                    }
+                    all_details_file = os.path.join(roll_number_results_dir, "all_appeal_details.json")
+                    self.save_json_data(no_appeals_data, all_details_file)
+                    logger.info(f"Saved property information for {roll_number} to {all_details_file}")
 
-                # The method extract_all_appeal_details was not found.
-                # If this step is necessary, the method needs to be implemented.
-                # logger.info("Skipping extract_all_appeal_details as it's not implemented.")
-                # self._check_shutdown() 
-                # all_details = self.extract_all_appeal_details(extracted_data, roll_number_results_dir)
-                # self._check_shutdown() 
-                # all_details_file = os.path.join(roll_number_results_dir, "all_appeal_details.json")
-                # self.save_json_data(all_details, all_details_file)
-                # logger.info(f"Saved all appeal details for {roll_number} to {all_details_file}")
-
-                logger.info(f"Successfully processed {roll_number}. Navigating back/resetting for next one.")
-                self.navigate_to_site() # Reset state for the next roll number
+                logger.info(f"Successfully processed {roll_number}.")
+                # No need for navigate_to_site() here as it's either done above or we're already on the main page
             
             except GracefulShutdownException: 
                 logger.warning(f"Graceful shutdown triggered during processing of roll number: {roll_number}")
@@ -346,15 +747,32 @@ class PlaywrightAutomation:
                 logger.error(f"Error processing roll number {roll_number}: {e}", exc_info=True)
                 error_file = os.path.join(roll_number_results_dir, "error_log.txt")
                 with open(error_file, 'w', encoding='utf-8') as f:
-                    f.write(f"Error processing {roll_number} at {datetime.datetime.now()}:\\n{str(e)}\\nTraceback: {traceback.format_exc()}")
-                try:
-                    logger.info("Attempting to recover by navigating to the main site...")
-                    self.navigate_to_site()
-                except Exception as nav_e:
-                    logger.error(f"Failed to recover by navigating to main site: {nav_e}")
-                    # If recovery fails, re-raise the original error to stop processing if critical
-                    # or break the loop if individual errors should not stop the batch.
-                    # For now, we let it continue to the next roll number if possible.
+                    f.write(f"Error processing {roll_number} at {datetime.datetime.now()}:\n{str(e)}\nTraceback: {traceback.format_exc()}")
+                
+                # Check if browser is still alive
+                if not self.is_browser_alive():
+                    logger.warning("Browser appears to have crashed. Attempting to restart...")
+                    try:
+                        self.restart_browser()
+                        logger.info("Browser restarted successfully. Continuing with next roll number.")
+                    except Exception as restart_error:
+                        logger.error(f"Failed to restart browser: {restart_error}")
+                        logger.error("Cannot continue processing. Exiting.")
+                        raise
+                else:
+                    # Browser is alive, just try to navigate back
+                    try:
+                        logger.info("Attempting to recover by navigating to the main site...")
+                        self.navigate_to_site()
+                    except Exception as nav_e:
+                        logger.error(f"Failed to recover by navigating to main site: {nav_e}")
+                        # Try restarting browser as last resort
+                        logger.warning("Navigation failed. Attempting browser restart...")
+                        try:
+                            self.restart_browser()
+                        except Exception as restart_error:
+                            logger.error(f"Failed to restart browser: {restart_error}")
+                            raise
             finally:
                 # Final check in loop iteration, though _check_shutdown should handle most cases
                 if self.shutdown_signal and self.shutdown_signal.is_set():

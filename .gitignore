@@ -1,4 +1,6 @@
 data/*
+data/results/
+data/test_extraction/
 __pycache__/
 *.py[cod]
 *.class
@@ -23,6 +25,7 @@ var/
 .venv
 venv/
 ENV/
+myenv/
 .idea/
 .vscode/
 *.swp
@@ -30,3 +33,4 @@ ENV/
 results.json
 parsed_results.json
 memory-bank/
+test_extraction_http.py

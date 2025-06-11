@@ -8,6 +8,7 @@ from .playwright_automation import PlaywrightAutomation  # Make sure GracefulShu
 from fastapi.staticfiles import StaticFiles
 import logging
 import threading  # Added import
+from typing import List
 
 app = FastAPI(title="CREIQ Roll Number API")
 
@@ -55,8 +56,16 @@ async def shutdown_event_handler():  # Renamed to avoid conflict with the new sh
 def start_processing(roll_numbers: list, results_dir: str, signal_event: threading.Event):
     logger.info(f"Found {len(roll_numbers)} roll numbers to process (background)")
     logger.info("Starting browser automation (background)...")
+    
+    # Check if we should run in debug mode (non-headless)
+    debug_mode = os.getenv('BROWSER_DEBUG', 'false').lower() == 'true'
+    headless = not debug_mode
+    
+    if debug_mode:
+        logger.info("Running browser in DEBUG mode (non-headless)")
+    
     # Pass the signal_event to PlaywrightAutomation constructor
-    automation = PlaywrightAutomation(headless=True, shutdown_signal=signal_event)
+    automation = PlaywrightAutomation(headless=headless, shutdown_signal=signal_event)
     try:
         automation.start_browser()
         if signal_event.is_set():  # Check signal after starting browser
