@@ -14,7 +14,7 @@ import threading
 from typing import List, Dict, Any
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +24,10 @@ from src.creiq.utils.roll_number_reader import read_roll_numbers_from_csv
 from src.creiq.services.extraction_service import ExtractionService
 from src.creiq.utils.logger import logger
 from src.creiq.config.settings import API_HOST, API_PORT, API_RELOAD
+from src.creiq.database.database import get_db, engine, Base
+from src.creiq.database.service import DatabaseService
+from src.creiq.database.models import RollNumber, Appeal
+from sqlalchemy.orm import Session
 
 # Create FastAPI app
 app = FastAPI(
@@ -50,6 +54,9 @@ shutdown_signal = threading.Event()
 # Background task tracking
 active_tasks: Dict[str, Any] = {}
 task_locks: Dict[str, threading.Lock] = {}
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 
 @app.on_event("startup")
@@ -210,6 +217,244 @@ def process_roll_numbers_task(task_id: str, roll_numbers: List[str]):
         # Clean up task resources
         if task_id in task_locks:
             del task_locks[task_id]
+
+
+@app.get("/api/roll_numbers")
+async def get_roll_numbers(
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all roll numbers with pagination.
+    
+    Args:
+        limit: Maximum number of records to return
+        offset: Number of records to skip
+        
+    Returns:
+        List of roll numbers with their status
+    """
+    db_service = DatabaseService(db)
+    roll_numbers = db_service.get_all_roll_numbers(limit=limit, offset=offset)
+    
+    return {
+        "roll_numbers": [
+            {
+                "roll_number": r.roll_number,
+                "property_description": r.property_description,
+                "municipality": r.municipality,
+                "extraction_status": r.extraction_status,
+                "last_extracted_at": r.last_extracted_at.isoformat() if r.last_extracted_at else None,
+                "appeals_count": len(r.appeals)
+            }
+            for r in roll_numbers
+        ],
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@app.get("/api/roll_numbers/{roll_number}")
+async def get_roll_number_details(
+    roll_number: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed information for a specific roll number.
+    
+    Args:
+        roll_number: The roll number to retrieve
+        
+    Returns:
+        Roll number details including all appeals with complete data
+    """
+    db_service = DatabaseService(db)
+    roll_record = db_service.get_roll_number(roll_number)
+    
+    if not roll_record:
+        raise HTTPException(status_code=404, detail="Roll number not found")
+    
+    return {
+        "roll_number": roll_record.roll_number,
+        "property_info": {
+            "description": roll_record.property_description,
+            "municipality": roll_record.municipality,
+            "classification": roll_record.classification,
+            "nbhd": roll_record.nbhd
+        },
+        "extraction_status": roll_record.extraction_status,
+        "extraction_error": roll_record.extraction_error,
+        "created_at": roll_record.created_at.isoformat() if roll_record.created_at else None,
+        "updated_at": roll_record.updated_at.isoformat() if roll_record.updated_at else None,
+        "last_extracted_at": roll_record.last_extracted_at.isoformat() if roll_record.last_extracted_at else None,
+        "appeals": [
+            {
+                # Basic info
+                "id": a.id,
+                "appeal_number": a.appeal_number,
+                
+                # Summary information (from main page)
+                "summary_info": {
+                    "appellant": a.appellant,
+                    "representative": a.representative,
+                    "section": a.section,
+                    "tax_date": a.tax_date,
+                    "hearing_number": a.hearing_number,
+                    "hearing_date": a.hearing_date,
+                    "status": a.status,
+                    "board_order_number": a.board_order_number
+                },
+                
+                # Appellant information (from detail page)
+                "appellant_info": {
+                    "name1": a.appellant_name1,
+                    "name2": a.appellant_name2,
+                    "filing_date": a.filing_date,
+                    "reason_for_appeal": a.reason_for_appeal
+                },
+                
+                # Decision information
+                "decision_info": {
+                    "decision_number": a.decision_number,
+                    "mailing_date": a.decision_mailing_date,
+                    "decisions": a.decisions,
+                    "decision_details": a.decision_details
+                },
+                
+                # Property information from detail page
+                "property_info_from_appeal": {
+                    "roll_number": a.property_roll_number,
+                    "municipality": a.property_municipality,
+                    "classification": a.property_classification,
+                    "nbhd": a.property_nbhd,
+                    "description": a.property_description
+                },
+                
+                # Additional data
+                "detail_screenshot_path": a.detail_screenshot_path,
+                "summary_data": a.summary_data,
+                "detail_data": a.detail_data,
+                
+                # Timestamps
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "updated_at": a.updated_at.isoformat() if a.updated_at else None
+            }
+            for a in roll_record.appeals
+        ]
+    }
+
+
+@app.get("/api/appeals/{appeal_number}")
+async def get_appeal_details(
+    appeal_number: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed information for a specific appeal.
+    
+    Args:
+        appeal_number: The appeal number to retrieve
+        
+    Returns:
+        Complete appeal details
+    """
+    db_service = DatabaseService(db)
+    appeal = db_service.get_appeal(appeal_number)
+    
+    if not appeal:
+        raise HTTPException(status_code=404, detail="Appeal not found")
+    
+    return {
+        "appeal_number": appeal.appeal_number,
+        "roll_number": appeal.roll_number,
+        "summary_info": {
+            "appellant": appeal.appellant,
+            "representative": appeal.representative,
+            "section": appeal.section,
+            "tax_date": appeal.tax_date,
+            "hearing_number": appeal.hearing_number,
+            "hearing_date": appeal.hearing_date,
+            "status": appeal.status,
+            "board_order_number": appeal.board_order_number
+        },
+        "appellant_info": {
+            "name1": appeal.appellant_name1,
+            "name2": appeal.appellant_name2,
+            "filing_date": appeal.filing_date,
+            "reason_for_appeal": appeal.reason_for_appeal
+        },
+        "decision_info": {
+            "decision_number": appeal.decision_number,
+            "mailing_date": appeal.decision_mailing_date,
+            "decisions": appeal.decisions,
+            "decision_details": appeal.decision_details
+        },
+        "property_info": {
+            "roll_number": appeal.property_roll_number,
+            "municipality": appeal.property_municipality,
+            "classification": appeal.property_classification,
+            "nbhd": appeal.property_nbhd,
+            "description": appeal.property_description
+        }
+    }
+
+
+@app.delete("/api/roll_numbers/{roll_number}")
+async def delete_roll_number(
+    roll_number: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a roll number and all associated appeals.
+    
+    Args:
+        roll_number: The roll number to delete
+        
+    Returns:
+        Deletion confirmation
+    """
+    db_service = DatabaseService(db)
+    
+    if not db_service.delete_roll_number(roll_number):
+        raise HTTPException(status_code=404, detail="Roll number not found")
+    
+    return {"message": f"Roll number {roll_number} and associated appeals deleted successfully"}
+
+
+@app.get("/api/stats")
+async def get_database_stats(db: Session = Depends(get_db)):
+    """
+    Get database statistics.
+    
+    Returns:
+        Statistics about roll numbers and appeals
+    """
+    from sqlalchemy import func
+    
+    total_roll_numbers = db.query(func.count(RollNumber.roll_number)).scalar()
+    total_appeals = db.query(func.count(Appeal.id)).scalar()
+    
+    status_counts = db.query(
+        RollNumber.extraction_status,
+        func.count(RollNumber.roll_number)
+    ).group_by(RollNumber.extraction_status).all()
+    
+    appeal_status_counts = db.query(
+        Appeal.status,
+        func.count(Appeal.id)
+    ).group_by(Appeal.status).all()
+    
+    return {
+        "total_roll_numbers": total_roll_numbers,
+        "total_appeals": total_appeals,
+        "roll_number_status_breakdown": {
+            status: count for status, count in status_counts
+        },
+        "appeal_status_breakdown": {
+            status: count for status, count in appeal_status_counts if status
+        }
+    }
 
 
 if __name__ == "__main__":
