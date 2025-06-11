@@ -1,64 +1,46 @@
 #!/usr/bin/env python3
 """
-Main module for CREIQ application.
-"""
+CREIQ Data Extraction Service - Main Entry Point
 
-import os
-import time
-from src.creiq import RollNumberReader, PlaywrightAutomation
+This application extracts appeal data from the ARB website.
+"""
+import sys
+import asyncio
+
+# Fix for Windows asyncio issues - must be done before any other asyncio operations
+if sys.platform == 'win32':
+    # Set Windows ProactorEventLoop to prevent NotImplementedError
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+from pathlib import Path
+
+# Add src to Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+import uvicorn
+from src.creiq.config.settings import API_HOST, API_PORT, API_RELOAD
+from src.creiq.utils.logger import logger
 
 
 def main():
-    """
-    Main function to run the CREIQ application.
-    """
-    # Define the path to the roll number CSV file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_file_path = os.path.join(current_dir, 'data', 'roll-number.csv')
-    
-    # Create base directories for storing data if they don't exist
-    data_dir = os.path.join(current_dir, 'data')
-    os.makedirs(data_dir, exist_ok=True)
-    
-    # Create the results directory for individual roll number data
-    results_dir = os.path.join(data_dir, 'results')
-    os.makedirs(results_dir, exist_ok=True)
-    
-    # Create an instance of RollNumberReader with the CSV file path
-    reader = RollNumberReader(csv_file_path)
-    
-    # Get the roll numbers without printing them
-    roll_numbers = reader.get_roll_numbers()
-    
-    print(f"Found {len(roll_numbers)} roll numbers to process")
-    
-    # Initialize Playwright automation (headless mode for production)
-    print("Starting browser automation...")
-    automation = PlaywrightAutomation(headless=True)  # Set to True for production
+    """Run the CREIQ API server."""
+    logger.info("Starting CREIQ Data Extraction Service...")
+    logger.info(f"API will be available at http://{API_HOST}:{API_PORT}")
+    logger.info("Documentation available at http://{API_HOST}:{API_PORT}/docs")
     
     try:
-        # Start the browser
-        automation.start_browser()
-        
-        # Navigate to the website
-        print(f"Navigating to ARB website...")
-        automation.navigate_to_site()
-        
-        # Process all roll numbers in one go - with screenshot and HTML saving disabled by default
-        automation.process_roll_numbers(
-            roll_numbers, 
-            results_dir,
-            save_screenshots=False,  # Set to False by default
-            save_html=False          # Set to False by default
+        uvicorn.run(
+            "src.creiq.api:app",
+            host=API_HOST,
+            port=API_PORT,
+            reload=API_RELOAD,
+            log_level="info"
         )
-        
+    except KeyboardInterrupt:
+        logger.info("Shutting down CREIQ service...")
     except Exception as e:
-        print(f"An error occurred during automation: {e}")
-    finally:
-        # Always close the browser
-        print("\nClosing browser...")
-        automation.close()
-        print("\nAutomation completed. Results saved in the 'data/results' directory.")
+        logger.error(f"Failed to start server: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

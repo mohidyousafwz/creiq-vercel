@@ -31,7 +31,7 @@ class PlaywrightAutomation:
     A base class for automating interactions with the ARB website using Playwright.
     """
     
-    def __init__(self, headless: bool = False, shutdown_signal: Optional[threading.Event] = None): # Modified
+    def __init__(self, headless: bool = False, shutdown_signal: Optional[threading.Event] = None):
         """
         Initialize the Playwright automation with browser settings.
         
@@ -55,127 +55,189 @@ class PlaywrightAutomation:
         
         # Browser configuration
         self.headless = headless
-        self.shutdown_signal = shutdown_signal # Added
+        self.shutdown_signal = shutdown_signal
     
-    def _check_shutdown(self): # Added
+    def _check_shutdown(self):
         """Checks if shutdown is signaled and raises exception if it is."""
         if self.shutdown_signal and self.shutdown_signal.is_set():
             logger.info("Shutdown signal received, initiating graceful shutdown of Playwright.")
-            # self.close() # Calling close() here can lead to recursion if close() also calls _check_shutdown() or if called from within close().
-            # It's better to let the finally block in the main processing task handle the full cleanup.
             raise GracefulShutdownException("Playwright automation shutting down gracefully.")
-
-    def start_browser(self) -> None:
-        """
-        Start the browser session.
-        """
+    
+    def start_browser(self):
+        """Start the browser and create a new page."""
+        self._check_shutdown()
+        
         try:
-            self._check_shutdown() 
             logger.info("Starting Playwright...")
             self.playwright = sync_playwright().start()
             
-            self._check_shutdown() 
             logger.info("Launching browser...")
             launch_args = [
-                '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', 
-                '--disable-web-security', '--disable-features=VizDisplayCompositor',
-                '--ignore-certificate-errors', '--ignore-ssl-errors', 
-                '--ignore-certificate-errors-spki-list', '--ignore-ssl-errors-types'
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--ignore-certificate-errors',
+                '--ignore-ssl-errors'
             ]
             
-            # Try to launch browsers in order of preference
-            browsers_to_try = [
-                ('chromium', self.playwright.chromium),
-                ('firefox', self.playwright.firefox),
-                ('webkit', self.playwright.webkit)
-            ]
-            
-            browser_launched = False
-            last_error = None
-            
-            for browser_name, browser_type in browsers_to_try:
+            try:
+                self.browser = self.playwright.chromium.launch(
+                    headless=self.headless,
+                    args=launch_args,
+                    timeout=60000  # 60 second timeout
+                )
+                logger.info("Browser launched successfully")
+            except Exception as browser_error:
+                logger.error(f"Failed to launch Chromium: {browser_error}")
+                # Try Firefox as fallback
+                logger.info("Attempting to launch Firefox as fallback...")
                 try:
-                    logger.info(f"Attempting to launch {browser_name}...")
-                    self.browser = browser_type.launch(
+                    self.browser = self.playwright.firefox.launch(
                         headless=self.headless,
-                        args=launch_args if browser_name != 'webkit' else [],  # WebKit doesn't support all args
-                        timeout=60000  # Increase timeout to 60 seconds
+                        timeout=60000
                     )
-                    logger.info(f"Successfully launched {browser_name}")
-                    browser_launched = True
-                    break
-                except Exception as e:
-                    last_error = e
-                    logger.warning(f"Failed to launch {browser_name}: {str(e)}")
-                    continue
+                    logger.info("Firefox launched successfully")
+                except Exception as firefox_error:
+                    logger.error(f"Failed to launch Firefox: {firefox_error}")
+                    # Try WebKit as last resort
+                    logger.info("Attempting to launch WebKit as last resort...")
+                    try:
+                        self.browser = self.playwright.webkit.launch(
+                            headless=self.headless,
+                            timeout=60000
+                        )
+                        logger.info("WebKit launched successfully")
+                    except Exception as webkit_error:
+                        logger.error(f"Failed to launch WebKit: {webkit_error}")
+                        raise RuntimeError("Failed to launch any browser. Please ensure browsers are installed with 'playwright install'")
             
-            if not browser_launched:
-                logger.error("Failed to launch any browser")
-                logger.error("Please run 'python -m playwright install' to install browsers")
-                if last_error:
-                    raise last_error
-                else:
-                    raise RuntimeError("No browsers could be launched")
-            
-            self._check_shutdown() 
             logger.info("Creating browser context...")
             self.context = self.browser.new_context(
                 viewport={"width": 1600, "height": 900},
                 ignore_https_errors=True
             )
             
-            self._check_shutdown() 
             logger.info("Creating new page...")
             self.page = self.context.new_page()
-            logger.info("Browser started successfully!")
+            logger.info("Browser started successfully")
             
-        except GracefulShutdownException: 
-            raise
         except Exception as e:
-            logger.error(f"Error starting browser: {str(e)}")
+            logger.error(f"Failed to start browser: {e}")
             logger.error(f"Error type: {type(e).__name__}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            self.close() 
+            self.close()
             raise
     
-    def navigate_to_site(self) -> None:
-        """
-        Navigate to the base URL from environment variables.
-        """
-        self._check_shutdown() 
+    def navigate_to_site(self):
+        """Navigate to the ARB website."""
+        self._check_shutdown()
+        
         if not self.page:
-            if self.shutdown_signal and self.shutdown_signal.is_set(): # Check before raising runtime error
-                 raise GracefulShutdownException("Shutdown before page initialization.")
-            raise RuntimeError("Browser not started or page not initialized. Call start_browser() first.")
+            raise RuntimeError("Browser not started. Call start_browser() first.")
         
         try:
-            logger.info(f"Navigating to: {self.base_url}")
-            self.page.goto(self.base_url, timeout=60000) # Increased timeout
-            self._check_shutdown() 
-            logger.info("Page loaded, waiting for network to be idle...")
-            self.page.wait_for_load_state("networkidle", timeout=60000) # Increased timeout
-            self._check_shutdown() 
-            logger.info("Network idle state reached")
-            
-            title = self.page.title()
-            logger.info(f"Page title: '{title}'")
-            if not any(keyword in title for keyword in ["E-Status", "ARB", "Appeals"]):
-                logger.warning(f"Page title '{title}' may not be correct; expected 'ARB', 'E-Status', or 'Appeals'.")
-            else:
-                logger.info("Successfully navigated to ARB website!")
-                
-        except GracefulShutdownException: 
-            raise
+            self.page.goto(self.base_url)
+            logger.info(f"Navigated to {self.base_url}")
         except Exception as e:
-            logger.error(f"Error during navigation: {e}")
-            try:
-                content = self.page.content()
-                logger.info(f"Page content length: {len(content)} characters. Preview: {content[:200]}...")
-            except: # pylint: disable=bare-except
-                logger.warning("Could not retrieve page content during navigation error handling.")
-            # self.close() # Avoid calling close here if it's part of a larger operation that has its own finally block
+            logger.error(f"Failed to navigate to site: {e}")
             raise
     
+    def process_roll_numbers(self, roll_numbers: List[str], results_base_dir: str) -> None:
+        """
+        Process a list of roll numbers: enter each, extract data, and save.
+        """
+        if not self.page:
+            logger.error("Page not initialized. Cannot process roll numbers.")
+            if self.shutdown_signal and self.shutdown_signal.is_set():
+                raise GracefulShutdownException("Shutdown before page initialization for processing roll numbers.")
+            raise RuntimeError("Browser not started or page not initialized.")
+
+        total_roll_numbers = len(roll_numbers)
+        logger.info(f"Starting to process {total_roll_numbers} roll numbers.")
+
+        for i, roll_number in enumerate(roll_numbers):
+            self._check_shutdown()
+            
+            logger.info(f"Processing roll number {i+1}/{total_roll_numbers}: {roll_number}")
+            # Preserve the original roll number format for directory naming
+            safe_roll_number_dir = roll_number.replace('/', '_').replace('\\', '_').replace(':', '_')
+            roll_number_results_dir = os.path.join(results_base_dir, safe_roll_number_dir)
+            os.makedirs(roll_number_results_dir, exist_ok=True)
+            
+            try:
+                # Process each roll number with frequent shutdown checks
+                self._process_single_roll_number(roll_number, roll_number_results_dir)
+                
+                # Check shutdown after each roll number
+                self._check_shutdown()
+                
+            except GracefulShutdownException:
+                logger.info(f"Shutdown requested while processing roll number {roll_number}")
+                raise
+            except Exception as e:
+                logger.error(f"Error processing roll number {roll_number}: {e}")
+                # Continue with next roll number
+                continue
+        
+        logger.info("Finished processing all roll numbers.")
+    
+    def _process_single_roll_number(self, roll_number: str, results_dir: str):
+        """Process a single roll number with frequent shutdown checks."""
+        self._check_shutdown()
+        
+        # Enter roll number
+        self.enter_roll_number(roll_number)
+        self._check_shutdown()
+        
+        # Submit the search
+        if not self.submit_search():
+            logger.error(f"Failed to submit search for roll number {roll_number}")
+            return
+        self._check_shutdown()
+        
+        # Extract data from the page
+        data = self.extract_data_to_json(roll_number)
+        self._check_shutdown()
+        
+        # Save HTML content
+        html_path = os.path.join(results_dir, "appeal_summary.html")
+        self.save_html_content(html_path)
+        self._check_shutdown()
+        
+        # Save JSON data
+        json_path = os.path.join(results_dir, "appeal_summary.json")
+        self.save_json_data(data, json_path)
+        self._check_shutdown()
+        
+        # Extract detailed appeal information if appeals exist
+        if data.get("appeal_info"):
+            detailed_data = self.extract_all_appeal_details(data, results_dir)
+            detailed_json_path = os.path.join(results_dir, "appeal_details.json")
+            self.save_json_data(detailed_data, detailed_json_path)
+            self._check_shutdown()
+    
+    def close(self):
+        """Close the browser and cleanup resources."""
+        try:
+            if self.page:
+                self.page.close()
+            if self.context:
+                self.context.close()
+            if self.browser:
+                self.browser.close()
+            if self.playwright:
+                self.playwright.stop()
+            logger.info("Browser closed successfully")
+        except Exception as e:
+            logger.error(f"Error closing browser: {e}")
+        finally:
+            self.page = None
+            self.context = None
+            self.browser = None
+            self.playwright = None
+
     def enter_roll_number(self, roll_number: str) -> None:
         """
         Enter a roll number into the website's multiple input fields.
@@ -609,178 +671,6 @@ class PlaywrightAutomation:
         self.navigate_to_site()
         logger.info("Browser restarted successfully")
     
-    def process_roll_numbers(self, roll_numbers: List[str], results_base_dir: str) -> None:
-        """
-        Process a list of roll numbers: enter each, extract data, and save.
-        """
-        if not self.page:
-            logger.error("Page not initialized. Cannot process roll numbers.")
-            if self.shutdown_signal and self.shutdown_signal.is_set():
-                 raise GracefulShutdownException("Shutdown before page initialization for processing roll numbers.")
-            raise RuntimeError("Browser not started or page not initialized.")
-
-        total_roll_numbers = len(roll_numbers)
-        logger.info(f"Starting to process {total_roll_numbers} roll numbers.")
-
-        for i, roll_number in enumerate(roll_numbers):
-            self._check_shutdown() 
-            
-            logger.info(f"Processing roll number {i+1}/{total_roll_numbers}: {roll_number}")
-            # Preserve the original roll number format for directory naming
-            safe_roll_number_dir = roll_number.replace('/', '_').replace('\\', '_').replace(':', '_')
-            roll_number_results_dir = os.path.join(results_base_dir, safe_roll_number_dir)
-            os.makedirs(roll_number_results_dir, exist_ok=True)
-            
-            try:
-                # It's often good to navigate to a clean state (e.g., search page) before each item
-                # self.navigate_to_site() # Or a more specific "go to search form" action
-                # self._check_shutdown()
-
-                self.enter_roll_number(roll_number)
-                self._check_shutdown() 
-
-                if not self.submit_search(): # Corrected method name and check return
-                    logger.warning(f"Search submission failed or indicated an error for {roll_number}. Skipping.")
-                    # Optionally save an error note here
-                    self.navigate_to_site() # Try to reset for next roll number
-                    continue 
-                self._check_shutdown() 
-
-                # Wait for page to change after submission
-                try:
-                    # First, wait for any network activity to settle
-                    self.page.wait_for_load_state("networkidle", timeout=10000)
-                    logger.info("Page loaded after search submission")
-                    
-                    # Take a screenshot for debugging
-                    screenshot_path = os.path.join(roll_number_results_dir, "after_search.png")
-                    self.take_screenshot(screenshot_path)
-                    
-                    # Log the current page title and URL for debugging
-                    current_title = self.page.title()
-                    current_url = self.page.url
-                    logger.info(f"Current page title: '{current_title}'")
-                    logger.info(f"Current URL: {current_url}")
-                    
-                    # Check for common error indicators
-                    error_selectors = [
-                        "#MainContent_lblErr",  # Error label
-                        "span:has-text('No records found')",
-                        "div.error-message",
-                        "div.alert-danger"
-                    ]
-                    
-                    error_found = False
-                    for selector in error_selectors:
-                        try:
-                            error_element = self.page.query_selector(selector)
-                            if error_element and error_element.is_visible():
-                                error_text = error_element.text_content()
-                                logger.info(f"Found error element with selector '{selector}': {error_text}")
-                                if "No records found" in error_text or "no result" in error_text.lower():
-                                    logger.info(f"No records found for roll number: {roll_number}")
-                                    no_records_file = os.path.join(roll_number_results_dir, "no_records_found.txt")
-                                    with open(no_records_file, 'w', encoding='utf-8') as f:
-                                        f.write(f"No records found for roll number: {roll_number} at {datetime.datetime.now()}\nError text: {error_text}")
-                                    error_found = True
-                                    break
-                        except:
-                            continue
-                    
-                    if error_found:
-                        self.navigate_to_site()  # Reset for next
-                        continue
-                    
-                    # If no error, assume we have results
-                    logger.info("No error found, proceeding with data extraction")
-                    
-                except Exception as wait_error:
-                    logger.error(f"Error waiting for page after search: {wait_error}")
-                    # Save the current page HTML for debugging
-                    debug_html_path = os.path.join(roll_number_results_dir, "debug_page.html")
-                    self.save_html_content(debug_html_path)
-                
-                self._check_shutdown()
-                
-                # Corrected method name and variable name
-                extracted_data = self.extract_data_to_json(roll_number) 
-                self._check_shutdown() 
-                
-                # Extract detailed appeal information if appeals were found
-                if extracted_data.get("appeal_info") and len(extracted_data["appeal_info"]) > 0:
-                    logger.info(f"Extracting detailed information for {len(extracted_data['appeal_info'])} appeals...")
-                    self._check_shutdown() 
-                    
-                    all_details = self.extract_all_appeal_details(extracted_data, roll_number_results_dir)
-                    self._check_shutdown() 
-                    
-                    all_details_file = os.path.join(roll_number_results_dir, "all_appeal_details.json")
-                    self.save_json_data(all_details, all_details_file)
-                    logger.info(f"Saved all appeal details for {roll_number} to {all_details_file}")
-                    
-                    # After extracting details, we need to navigate back to the main page
-                    # and re-enter the roll number to ensure we're on the appeals listing page
-                    # for the next roll number
-                    logger.info(f"Navigating back to main page after processing appeals for {roll_number}")
-                    self.navigate_to_site()
-                else:
-                    logger.info(f"No appeals found for {roll_number}, saving property information only")
-                    # Create consolidated structure even when no appeals exist
-                    no_appeals_data = {
-                        "roll_number": extracted_data.get("roll_number", ""),
-                        "extracted_timestamp": extracted_data.get("extracted_timestamp", ""),
-                        "page_title": extracted_data.get("page_title", ""),
-                        "property_info": extracted_data.get("property_info", {}),
-                        "appeals": []
-                    }
-                    all_details_file = os.path.join(roll_number_results_dir, "all_appeal_details.json")
-                    self.save_json_data(no_appeals_data, all_details_file)
-                    logger.info(f"Saved property information for {roll_number} to {all_details_file}")
-
-                logger.info(f"Successfully processed {roll_number}.")
-                # No need for navigate_to_site() here as it's either done above or we're already on the main page
-            
-            except GracefulShutdownException: 
-                logger.warning(f"Graceful shutdown triggered during processing of roll number: {roll_number}")
-                raise 
-            except Exception as e:
-                logger.error(f"Error processing roll number {roll_number}: {e}", exc_info=True)
-                error_file = os.path.join(roll_number_results_dir, "error_log.txt")
-                with open(error_file, 'w', encoding='utf-8') as f:
-                    f.write(f"Error processing {roll_number} at {datetime.datetime.now()}:\n{str(e)}\nTraceback: {traceback.format_exc()}")
-                
-                # Check if browser is still alive
-                if not self.is_browser_alive():
-                    logger.warning("Browser appears to have crashed. Attempting to restart...")
-                    try:
-                        self.restart_browser()
-                        logger.info("Browser restarted successfully. Continuing with next roll number.")
-                    except Exception as restart_error:
-                        logger.error(f"Failed to restart browser: {restart_error}")
-                        logger.error("Cannot continue processing. Exiting.")
-                        raise
-                else:
-                    # Browser is alive, just try to navigate back
-                    try:
-                        logger.info("Attempting to recover by navigating to the main site...")
-                        self.navigate_to_site()
-                    except Exception as nav_e:
-                        logger.error(f"Failed to recover by navigating to main site: {nav_e}")
-                        # Try restarting browser as last resort
-                        logger.warning("Navigation failed. Attempting browser restart...")
-                        try:
-                            self.restart_browser()
-                        except Exception as restart_error:
-                            logger.error(f"Failed to restart browser: {restart_error}")
-                            raise
-            finally:
-                # Final check in loop iteration, though _check_shutdown should handle most cases
-                if self.shutdown_signal and self.shutdown_signal.is_set():
-                    logger.info(f"Shutdown signal confirmed in finally block for roll number {roll_number}.")
-                    # Do not raise here; let the main _check_shutdown at loop start or within methods handle it.
-        
-        logger.info("Finished processing all roll numbers.")
-    
     def take_screenshot(self, file_path: str) -> None:
         """
         Take a screenshot of the current page state.
@@ -796,56 +686,6 @@ class PlaywrightAutomation:
             raise
         except Exception as e:
             logger.error(f"Error taking screenshot to {file_path}: {e}")
-
-    def close(self) -> None:
-        """
-        Close the browser and release Playwright resources.
-        This method should be safe to call multiple times or on partially initialized components.
-        """
-        # No _check_shutdown() here to avoid recursion if called from _check_shutdown itself.
-        # Also, this is the cleanup method, so it should try to run as much as possible.
-        logger.info("Attempting to close Playwright resources...")
-        
-        # Page
-        if self.page:
-            try:
-                self.page.close()
-                logger.info("Page closed.")
-            except Exception as e:
-                logger.warning(f"Error closing page: {e} (Page might already be closed or invalid)")
-            finally:
-                self.page = None # Ensure it's None even if close fails
-        
-        # Context
-        if self.context:
-            try:
-                self.context.close()
-                logger.info("Browser context closed.")
-            except Exception as e:
-                logger.warning(f"Error closing context: {e} (Context might already be closed or invalid)")
-            finally:
-                self.context = None
-            
-        # Browser
-        if self.browser:
-            try:
-                self.browser.close()
-                logger.info("Browser closed.")
-            except Exception as e:
-                logger.warning(f"Error closing browser: {e} (Browser might already be closed or invalid)")
-            finally:
-                self.browser = None
-            
-        # Playwright
-        if self.playwright:
-            try:
-                self.playwright.stop() # For sync_playwright, stop() is called on the object returned by sync_playwright()
-                logger.info("Playwright stopped.")
-            except Exception as e:
-                logger.warning(f"Error stopping Playwright: {e}")
-            finally:
-                self.playwright = None
-        logger.info("Playwright resources cleanup attempt finished.")
 
 # Example usage (for testing purposes, typically called from api.py)
 # if __name__ == '__main__':

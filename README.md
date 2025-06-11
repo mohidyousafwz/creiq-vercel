@@ -1,243 +1,80 @@
-# CREIQ - ARB Website Automation System
+# CREIQ - Data Extraction Service
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python Version">
-  <img src="https://img.shields.io/badge/Playwright-1.40+-green.svg" alt="Playwright">
-  <img src="https://img.shields.io/badge/FastAPI-0.104+-red.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Coverage-80%25-brightgreen.svg" alt="Coverage">
-</div>
+CREIQ (CRE Intelligence Query) is a Python-based web scraping application that extracts appeal data from the Assessment Review Board (ARB) website. It uses Playwright for browser automation and provides both API and command-line interfaces.
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [API Documentation](#api-documentation)
-- [Testing](#testing)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+## 🚀 Features
 
-## 🎯 Overview
+- **Automated Data Extraction**: Extracts appeal information for multiple roll numbers
+- **RESTful API**: Upload CSV files and process roll numbers via API endpoints
+- **Property Information**: Captures property descriptions, classifications, and municipality data
+- **Appeal Details**: Extracts appellant info, status, hearing details, and decisions
+- **Batch Processing**: Handle multiple roll numbers efficiently
+- **Background Processing**: Non-blocking API with task tracking
+- **Test Mode**: Easy testing with single roll numbers
 
-CREIQ is an automated web scraping system designed to interact with the Assessment Review Board (ARB) website. It automates the process of searching for property information using roll numbers, extracting relevant data, and saving it in structured formats.
+## 📋 Prerequisites
 
-The system is built with reliability and scalability in mind, featuring:
-- **Robust error handling** with automatic recovery
-- **Graceful shutdown** capabilities for long-running operations
-- **Comprehensive logging** for debugging and monitoring
-- **RESTful API** for easy integration
-- **Extensive test coverage** (80%+)
-
-## ✨ Features
-
-### Core Functionality
-- 🌐 **Automated Web Navigation**: Uses Playwright to control Firefox browser
-- 📝 **Batch Processing**: Process multiple roll numbers from Excel files
-- 🔍 **Data Extraction**: Extract property and appeal information
-- 💾 **Multiple Output Formats**: Save as JSON and HTML
-- 📸 **Screenshot Capture**: Document the state of pages
-
-### Technical Features
-- 🚀 **Async API**: Built with FastAPI for high performance
-- 🛡️ **Error Recovery**: Automatic retry and error logging
-- 🔄 **Graceful Shutdown**: Clean termination of long-running tasks
-- 📊 **Progress Tracking**: Real-time status updates
-- 🧪 **Comprehensive Testing**: 30+ tests with mocking
-
-### Security & Reliability
-- 🔐 **Environment-based Configuration**: Sensitive data in `.env` files
-- 🚦 **Thread-safe Operations**: Proper synchronization for concurrent access
-- 📝 **Detailed Logging**: Comprehensive logs for debugging
-- ⚡ **Resource Management**: Automatic cleanup of browser resources
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Excel Files   │────▶│   FastAPI App   │────▶│   Playwright    │
-│  (Roll Numbers) │     │   (REST API)    │     │  (Web Browser)  │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │                         │
-                               ▼                         ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │  JSON Output    │     │   ARB Website   │
-                        │   (Results)     │◀────│  (Data Source)  │
-                        └─────────────────┘     └─────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
 - Python 3.8 or higher
-- Firefox browser (for Playwright)
-- Windows/Linux/macOS
+- Node.js (for Playwright)
+- Chrome/Chromium browser
 
-### Installation
+## 🛠️ Installation
 
-1. **Clone the repository**
+1. **Clone the repository**:
 ```bash
 git clone https://github.com/yourusername/creiq.git
 cd creiq
 ```
 
-2. **Create virtual environment**
+2. **Create virtual environment**:
 ```bash
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux/macOS
-source venv/bin/activate
+python -m venv myenv
+# On Windows:
+myenv\Scripts\activate
+# On macOS/Linux:
+source myenv/bin/activate
 ```
 
-3. **Install dependencies**
+3. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
-playwright install firefox
 ```
 
-4. **Configure environment**
+4. **Install Playwright browsers**:
 ```bash
-# Copy example environment file
-cp .env.example .env
-
-# Edit .env with your settings
-# URL=https://your-arb-website.com
+playwright install chromium
 ```
 
-### Running the Application
-
-1. **Start the API server**
+5. **Set up environment variables**:
 ```bash
-python -m uvicorn src.creiq.api:app --reload
+cp env.example .env
+# Edit .env and add your ARB website URL
 ```
 
-2. **Access the API documentation**
-```
-http://localhost:8000/docs
-```
+## 🚦 Quick Start
 
-3. **Upload and process Excel file**
+### Testing Single Roll Number
+
 ```bash
-curl -X POST "http://localhost:8000/process" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@your_roll_numbers.xlsx"
+python scripts/test_extraction.py
+# Or with a specific roll number:
+python scripts/test_extraction.py "38-29-300-012-10400-0000"
 ```
 
-## ⚙️ Configuration
+### Running the API Server
 
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
-# Required
-URL=https://arb-website.com
-
-# Optional
-HEADLESS=false              # Run browser in headless mode
-LOG_LEVEL=INFO             # Logging level
-RESULTS_DIR=data/results   # Output directory
-```
-
-### Excel File Format
-
-The system expects Excel files with roll numbers in the first column:
-
-| A (Roll Number)      |
-|---------------------|
-| 1908072215005000000 |
-| 1908072215005000001 |
-| 1908072215005000002 |
-
-## 📚 API Documentation
-
-### Endpoints
-
-#### `GET /`
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "message": "CREIQ API is running",
-  "version": "1.0.0"
-}
-```
-
-#### `POST /process`
-Process an Excel file containing roll numbers.
-
-**Request:**
-- Method: `POST`
-- Content-Type: `multipart/form-data`
-- Body: Excel file (.xlsx)
-
-**Response:**
-```json
-{
-  "status": "completed",
-  "message": "Processing completed successfully",
-  "details": {
-    "total_roll_numbers": 10,
-    "processed": 10,
-    "successful": 8,
-    "failed": 2
-  }
-}
-```
-
-#### `POST /shutdown`
-Gracefully shutdown any running automation tasks.
-
-**Response:**
-```json
-{
-  "status": "shutdown initiated",
-  "message": "Automation tasks are shutting down"
-}
-```
-
-#### `GET /status`
-Get current processing status.
-
-**Response:**
-```json
-{
-  "automation_running": true,
-  "current_task": "Processing roll number 5 of 10"
-}
-```
-
-## 🧪 Testing
-
-### Run All Tests
 ```bash
-python run_tests.py
+python main.py
+# API will be available at http://localhost:8000
+# Documentation at http://localhost:8000/docs
 ```
 
-### Run with Coverage
+### Upload CSV via API
+
 ```bash
-pytest tests/ --cov=src/creiq --cov-report=html
+curl -X POST "http://localhost:8000/upload" \
+  -F "file=@data/sample_upload_files/roll-number.csv"
 ```
-
-### View Coverage Report
-```bash
-# Windows
-start htmlcov/index.html
-
-# Linux/macOS
-open htmlcov/index.html
-```
-
-### Test Categories
-- **Unit Tests**: Test individual components
-- **Integration Tests**: Test complete workflows
-- **Edge Cases**: Test error conditions
 
 ## 📁 Project Structure
 
@@ -245,51 +82,135 @@ open htmlcov/index.html
 CREIQ/
 ├── src/
 │   └── creiq/
-│       ├── __init__.py           # Package initialization
-│       ├── api.py                # FastAPI application
-│       ├── playwright_automation.py  # Browser automation
-│       └── roll_number_reader.py # Excel file processing
+│       ├── config/           # Configuration management
+│       │   ├── __init__.py
+│       │   └── settings.py   # Application settings
+│       ├── models/           # Data models (future DB support)
+│       │   ├── __init__.py
+│       │   └── appeal.py     # Appeal data structures
+│       ├── services/         # Business logic
+│       │   ├── __init__.py
+│       │   └── extraction_service.py
+│       ├── utils/            # Utility functions
+│       │   ├── __init__.py
+│       │   ├── logger.py
+│       │   └── roll_number_reader.py
+│       ├── __init__.py
+│       ├── api.py            # FastAPI application
+│       └── playwright_automation.py  # Web scraping logic
 ├── tests/
-│   ├── test_playwright_automation.py  # Test suite
-│   ├── requirements-test.txt     # Test dependencies
-│   └── TEST_SUMMARY.md          # Test documentation
+│   └── unit/                 # Unit tests
+│       ├── __init__.py
+│       └── test_extraction.py
+├── scripts/
+│   ├── test_extraction.py    # Test single extraction
+│   └── run_tests.py         # Run test suite
 ├── data/
-│   ├── uploads/                 # Uploaded Excel files
-│   └── results/                 # Processing results
-├── requirements.txt             # Project dependencies
-├── .env.example                # Environment template
-├── pytest.ini                  # Pytest configuration
-└── README.md                   # This file
+│   ├── sample_upload_files/  # Sample CSV files
+│   ├── results/              # Extraction results
+│   └── test_extraction/      # Test outputs
+├── config/                   # Configuration files
+├── main.py                   # Main entry point
+├── requirements.txt          # Python dependencies
+├── env.example              # Environment variables template
+├── docker-compose.yml       # Docker configuration
+└── README.md
 ```
+
+## 📊 Output Format
+
+The extraction creates a JSON file (`all_appeal_details.json`) with the following structure:
+
+```json
+{
+  "roll_number": "38-29-300-012-10400-0000",
+  "extracted_timestamp": "2025-06-11T15:02:35.689946",
+  "page_title": "E-Services - Appeals",
+  "property_info": {
+    "description": "429 EXMOUTH ST PLAN 3 PT LOT 5 PLAN 96 LOT"
+  },
+  "appeals": [
+    {
+      "appeal_number": "1194369",
+      "property_info": {
+        "roll_number": "38-29-300-012-10400-0000",
+        "municipality": "Sarnia City",
+        "classification": "Commercial sport complexes",
+        "nbhd": "293",
+        "description": "429 EXMOUTH STPLAN 3 PT LOT 5 PLAN 96 LOT"
+      },
+      "appellant_info": {
+        "name1": "J J W HOLDINGS LTD",
+        "name2": "C/O DONALD STASIW",
+        "representative": "D B BURNARD & ASSOCIATES",
+        "filing_date": "31-March-2000",
+        "tax_date": "01-January-2000",
+        "section": "40",
+        "reason_for_appeal": "Assessment Too High"
+      },
+      "status_info": {
+        "status": "Closed"
+      },
+      "decision_info": {
+        "decision_number": "1357206",
+        "mailing_date": "23-June-2000",
+        "decisions": "APPEAL WITHDRAWN (BEFORE SCHEDULING)",
+        "decision_details": "HEARING # 17287."
+      }
+    }
+  ]
+}
+```
+
+## 🧪 Testing
+
+Run the test suite with coverage:
+
+```bash
+python scripts/run_tests.py
+```
+
+This will generate:
+- Terminal coverage report
+- HTML coverage report in `htmlcov/index.html`
+
+## 🔧 Configuration
+
+Key environment variables in `.env`:
+
+- `URL`: ARB website URL (required)
+- `BROWSER_HEADLESS`: Run browser in headless mode (default: true)
+- `API_HOST`: API host address (default: 0.0.0.0)
+- `API_PORT`: API port number (default: 8000)
+- `LOG_LEVEL`: Logging level (default: INFO)
+
+See `env.example` for all available options.
+
+## 🚧 Upcoming Features
+
+- [ ] Web Dashboard with authentication
+- [ ] Database integration (SQLAlchemy)
+- [ ] Scheduled extraction (cron jobs)
+- [ ] Export to multiple formats (Excel, PDF)
+- [ ] Email notifications
+- [ ] Docker deployment
+- [ ] Rate limiting and retry logic
+- [ ] Advanced filtering and search
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these steps:
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Guidelines
-- Write tests for new features
-- Follow PEP 8 style guide
-- Update documentation
-- Ensure all tests pass
+## 📝 License
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with [Playwright](https://playwright.dev/) for reliable browser automation
-- Powered by [FastAPI](https://fastapi.tiangolo.com/) for modern API development
-- Tested with [Pytest](https://pytest.org/) for comprehensive test coverage
-
----
-
-<div align="center">
-  <p>Built with ❤️ by the CREIQ Team</p>
-</div>
+- Built with [Playwright](https://playwright.dev/) for reliable web automation
+- [FastAPI](https://fastapi.tiangolo.com/) for the modern API framework
+- Assessment Review Board for providing the public data

@@ -42,7 +42,7 @@
       formData.append('file', fileInput.files[0]);
 
       try {
-        const response = await fetch('/upload-roll-numbers', {
+        const response = await fetch('/upload', {
           method: 'POST',
           body: formData
         });
@@ -52,8 +52,9 @@
         }
         const data = await response.json();
         resultDiv.innerHTML = `
-          <p>Found <strong>${data.count}</strong> roll numbers.</p>
+          <p>Found <strong>${data.roll_numbers.length}</strong> roll numbers.</p>
           <p>Processing has started in the background.</p>
+          <p>Task ID: ${data.task_id}</p>
         `;
       } catch (err) {
         resultDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;

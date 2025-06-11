@@ -33,4 +33,7 @@ myenv/
 results.json
 parsed_results.json
 memory-bank/
-test_extraction_http.py
+.DS_Store
+htmlcov/
+.coverage
+.pytest_cache/
