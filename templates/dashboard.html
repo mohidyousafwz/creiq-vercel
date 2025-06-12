@@ -65,19 +65,6 @@
     </div>
 </div>
 
-<!-- Charts -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Extraction Status</h3>
-        <canvas id="statusChart" width="400" height="200"></canvas>
-    </div>
-    
-    <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Appeals by Status</h3>
-        <canvas id="appealChart" width="400" height="200"></canvas>
-    </div>
-</div>
-
 <!-- Recent Activity -->
 <div class="bg-white shadow rounded-lg">
     <div class="px-6 py-4 border-b border-gray-200">
@@ -144,4 +131,34 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Load dashboard statistics (only for success rate)
+    async function loadDashboardStats() {
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            const data = await response.json();
+            
+            // Update success rate
+            const successRateElement = document.getElementById('success-rate');
+            if (data.success_rate !== null) {
+                successRateElement.textContent = data.success_rate;
+            } else {
+                successRateElement.textContent = 'N/A';
+                successRateElement.parentElement.innerHTML = '<span class="text-sm text-gray-500">No data yet</span>';
+            }
+            
+        } catch (error) {
+            console.error('Failed to load dashboard stats:', error);
+        }
+    }
+    
+    // Load data when page loads
+    document.addEventListener('DOMContentLoaded', loadDashboardStats);
+    
+    // Refresh data every 30 seconds
+    setInterval(loadDashboardStats, 30000);
+</script>
 {% endblock %} 

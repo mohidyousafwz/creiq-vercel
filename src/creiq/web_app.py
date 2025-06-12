@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, text
 from pydantic import BaseModel
 import uvicorn
 
@@ -246,10 +246,15 @@ async def health_page(request: Request, db: Session = Depends(get_db), _: bool =
     """System health page."""
     # Get database status
     try:
-        db.execute("SELECT 1")
-        db_status = "healthy"
-    except:
+        # Properly test database connection by executing a query and fetching result
+        result = db.execute(text("SELECT 1")).scalar()
+        if result == 1:
+            db_status = "healthy"
+        else:
+            db_status = "unhealthy"
+    except Exception as e:
         db_status = "unhealthy"
+        logger.error(f"Database health check failed: {e}")
     
     # Get extraction service status
     extraction_status = "healthy" if not shutdown_signal.is_set() else "shutdown"
@@ -270,7 +275,7 @@ async def get_dashboard_stats(db: Session = Depends(get_db), _: bool = Depends(r
     total_roll_numbers = db.query(func.count(RollNumber.roll_number)).scalar()
     total_appeals = db.query(func.count(Appeal.id)).scalar()
     
-    # Status breakdown
+    # Status breakdown for roll numbers
     status_counts = db.query(
         RollNumber.extraction_status,
         func.count(RollNumber.roll_number)
@@ -280,21 +285,50 @@ async def get_dashboard_stats(db: Session = Depends(get_db), _: bool = Depends(r
     completed = next((count for status, count in status_counts if status == "completed"), 0)
     failed = next((count for status, count in status_counts if status == "failed"), 0)
     total_processed = completed + failed
-    success_rate = (completed / total_processed * 100) if total_processed > 0 else 0
+    success_rate = (completed / total_processed * 100) if total_processed > 0 else None
     
-    # Appeals by status
-    appeal_status = db.query(
+    # Appeals by status (the meaningful chart the user wants)
+    appeal_status_counts = db.query(
         Appeal.status,
         func.count(Appeal.id)
+    ).filter(
+        Appeal.status != None,
+        Appeal.status != ""
     ).group_by(Appeal.status).all()
+    
+    # Appeals extracted in the last 7 days
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_appeals = db.query(func.count(Appeal.id)).filter(
+        Appeal.created_at >= seven_days_ago
+    ).scalar()
+    
+    # Appeals extracted in the last 30 days
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    monthly_appeals = db.query(func.count(Appeal.id)).filter(
+        Appeal.created_at >= thirty_days_ago
+    ).scalar()
+    
+    # Top 5 reasons for appeals
+    appeal_reasons = db.query(
+        Appeal.reason_for_appeal,
+        func.count(Appeal.id)
+    ).filter(
+        Appeal.reason_for_appeal != None,
+        Appeal.reason_for_appeal != ""
+    ).group_by(Appeal.reason_for_appeal).order_by(
+        func.count(Appeal.id).desc()
+    ).limit(5).all()
     
     return {
         "total_roll_numbers": total_roll_numbers,
         "total_appeals": total_appeals,
         "processing_count": len([e for e in active_extractions.values() if e.get("status") == "processing"]),
         "status_breakdown": dict(status_counts),
-        "success_rate": round(success_rate, 1),
-        "appeal_status": dict(appeal_status)
+        "success_rate": round(success_rate, 1) if success_rate is not None else None,
+        "appeal_status_breakdown": dict(appeal_status_counts) if appeal_status_counts else {},
+        "recent_appeals_7d": recent_appeals,
+        "recent_appeals_30d": monthly_appeals,
+        "top_appeal_reasons": dict(appeal_reasons) if appeal_reasons else {}
     }
 
 

@@ -8,18 +8,56 @@
     <!-- Introduction -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Getting Started</h3>
+            <h3 class="text-lg font-medium text-gray-900">Welcome to CREIQ - Getting Started</h3>
         </div>
         <div class="p-6 prose prose-sm max-w-none">
-            <p>Welcome to the CREIQ Data Extraction System. This guide will help you understand how to use the system effectively.</p>
+            <p class="text-lg text-gray-700 mb-4">This system helps you automatically collect appeal information from the ARB (Assessment Review Board) website without having to visit each property manually.</p>
             
-            <h4 class="text-base font-medium text-gray-900 mt-4">What is CREIQ Data Extraction System?</h4>
-            <p>CREIQ Data Extraction System is an automated system that extracts appeal data from the ARB (Assessment Review Board) website. It helps you:</p>
-            <ul>
-                <li>Manage roll numbers and their associated appeals</li>
-                <li>Automatically extract appeal information</li>
-                <li>Track extraction progress in real-time</li>
-                <li>Export data for further analysis</li>
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-2">What does CREIQ do?</h4>
+            <p>CREIQ saves you time by:</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Automatically visiting</strong> the ARB website for each property roll number</li>
+                <li><strong>Finding and collecting</strong> all appeal information for each property</li>
+                <li><strong>Organizing everything</strong> in one easy-to-use dashboard</li>
+                <li><strong>Allowing you to export</strong> all the data for your reports</li>
+            </ul>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-2">How it works - Simple 3-step process:</h4>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="space-y-3">
+                    <div class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white text-sm font-medium rounded-full flex items-center justify-center mr-3">1</span>
+                        <div>
+                            <p class="font-medium text-blue-900">Upload your list</p>
+                            <p class="text-sm text-blue-800">Prepare a simple list of property roll numbers and upload it</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white text-sm font-medium rounded-full flex items-center justify-center mr-3">2</span>
+                        <div>
+                            <p class="font-medium text-blue-900">Let CREIQ work</p>
+                            <p class="text-sm text-blue-800">Watch as the system automatically visits the ARB website and collects all appeal data</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white text-sm font-medium rounded-full flex items-center justify-center mr-3">3</span>
+                        <div>
+                            <p class="font-medium text-blue-900">Review and export</p>
+                            <p class="text-sm text-blue-800">View the collected appeals and export everything for your analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-2">Navigation Menu</h4>
+            <p>Use the menu at the top to navigate between different sections:</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Dashboard:</strong> Overview of all your data and system activity</li>
+                <li><strong>Roll Numbers:</strong> Upload new properties and view extraction progress</li>
+                <li><strong>Scraper Logs:</strong> See what the system is doing in real-time</li>
+                <li><strong>Settings:</strong> Backup your data and manage the system</li>
+                <li><strong>System Health:</strong> Check if everything is working properly</li>
+                <li><strong>User Guide:</strong> This help page</li>
             </ul>
         </div>
     </div>
@@ -27,28 +65,77 @@
     <!-- Uploading Roll Numbers -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Uploading Roll Numbers</h3>
+            <h3 class="text-lg font-medium text-gray-900">Step 1: Uploading Your Roll Numbers</h3>
         </div>
         <div class="p-6 prose prose-sm max-w-none">
-            <h4 class="text-base font-medium text-gray-900">CSV File Format</h4>
-            <p>To upload roll numbers, prepare a CSV file with the following format:</p>
-            <pre class="bg-gray-100 p-3 rounded">38-29-300-012-10400-0000
-38-29-300-012-10500-0000
-38-29-300-012-10600-0000</pre>
+            <p class="text-gray-700 mb-4">Before CREIQ can collect appeal data, you need to tell it which properties to look up by uploading a list of roll numbers.</p>
             
-            <h4 class="text-base font-medium text-gray-900 mt-4">Upload Process</h4>
-            <ol>
-                <li>Go to the "Roll Numbers" page</li>
-                <li>Click the "Upload CSV" button</li>
-                <li>Select your CSV file</li>
-                <li>Review the upload summary</li>
-                <li>Click "Process All" to start extraction</li>
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Preparing Your CSV File</h4>
+            <p>A CSV file is like a simple text file that contains your list of roll numbers. Here's how to create one:</p>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-amber-900 mb-2">Option A: Using Excel or Google Sheets</h5>
+                <ol class="list-decimal pl-5 space-y-1 text-sm text-amber-800">
+                    <li>Open Excel or Google Sheets</li>
+                    <li>Put each roll number in column A, one per row (no headers needed)</li>
+                    <li>Save the file as "CSV" format</li>
+                    <li>Choose a simple name like "my-roll-numbers.csv"</li>
+                </ol>
+            </div>
+            
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-gray-900 mb-2">Option B: Using Notepad</h5>
+                <ol class="list-decimal pl-5 space-y-1 text-sm text-gray-700">
+                    <li>Open Notepad (Windows) or TextEdit (Mac)</li>
+                    <li>Type each roll number on its own line</li>
+                    <li>Save the file with ".csv" at the end of the name</li>
+                </ol>
+            </div>
+            
+            <h5 class="text-base font-medium text-gray-900 mt-4 mb-2">Your file should look like this:</h5>
+            <pre class="bg-gray-100 p-3 rounded text-sm">38-29-300-012-10400-0000
+06-14-041-701-16500-0000
+19-08-072-215-00500-0000</pre>
+            
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-red-900 mb-2">⚠️ Important: Roll Number Format</h5>
+                <p class="text-sm text-red-800">Make sure your roll numbers follow this format: <strong>XX-XX-XXX-XXX-XXXXX-XXXX</strong></p>
+                <p class="text-sm text-red-800">Example: 38-29-300-012-10400-0000 (includes all the dashes)</p>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Upload Process - Step by Step</h4>
+            <ol class="list-decimal pl-5 space-y-2">
+                <li><strong>Go to Roll Numbers page:</strong> Click "Roll Numbers" in the top menu</li>
+                <li><strong>Start upload:</strong> Click the blue "Upload CSV" button at the top of the page</li>
+                <li><strong>Choose your file:</strong> Click "Choose File" and select your CSV file from your computer</li>
+                <li><strong>Upload the file:</strong> Click the "Upload" button</li>
+                <li><strong>Review the summary:</strong> The system will tell you:
+                    <ul class="list-disc pl-5 mt-2 space-y-1">
+                        <li>How many roll numbers were found</li>
+                        <li>How many are new vs. already in the system</li>
+                        <li>Any errors if roll numbers are in wrong format</li>
+                    </ul>
+                </li>
+                <li><strong>Choose what to do next:</strong>
+                    <ul class="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>"Process All"</strong> - Start collecting appeal data automatically</li>
+                        <li><strong>"I'll do Manually"</strong> - Just add to your list, process later</li>
+                    </ul>
+                </li>
             </ol>
             
-            <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4">
-                <p class="text-sm text-blue-800">
-                    <strong>Tip:</strong> The system will automatically detect duplicate roll numbers and only process new ones.
-                </p>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-green-900 mb-2">✅ What happens after upload</h5>
+                <p class="text-sm text-green-800">Your roll numbers are immediately added to your list and will appear in the table below. If you chose "Process All", CREIQ will start visiting the ARB website to collect appeal information automatically.</p>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-blue-900 mb-2">💡 Pro Tips</h5>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• You can upload the same file multiple times - the system will skip duplicates</li>
+                    <li>• Start with a small test file (2-3 roll numbers) to make sure everything works</li>
+                    <li>• Keep your original file as a backup</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -56,55 +143,206 @@
     <!-- Monitoring Extraction -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Monitoring Extraction Progress</h3>
+            <h3 class="text-lg font-medium text-gray-900">Step 2: Watching CREIQ Work - Monitoring Progress</h3>
         </div>
         <div class="p-6 prose prose-sm max-w-none">
-            <h4 class="text-base font-medium text-gray-900">Real-time Progress</h4>
-            <p>During extraction, you can monitor progress in real-time:</p>
-            <ul>
-                <li><strong>Roll Numbers Page:</strong> Shows progress for each roll number being processed</li>
-                <li><strong>Dashboard:</strong> Displays overall extraction statistics</li>
-                <li><strong>Scraper Logs:</strong> Provides detailed extraction logs</li>
-            </ul>
+            <p class="text-gray-700 mb-4">Once you click "Process All", CREIQ starts working automatically. Here's what to expect and how to monitor the progress.</p>
             
-            <h4 class="text-base font-medium text-gray-900 mt-4">Extraction Steps</h4>
-            <p>Each roll number goes through the following steps:</p>
-            <ol>
-                <li>Opening browser</li>
-                <li>Navigating to ARB website</li>
-                <li>Entering roll number</li>
-                <li>Searching for appeals</li>
-                <li>Extracting appeal details</li>
-                <li>Saving results to database</li>
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">What Happens During Extraction</h4>
+            <p>For each roll number in your list, CREIQ will:</p>
+            <ol class="list-decimal pl-5 space-y-2">
+                <li><strong>Open a web browser</strong> (you won't see this - it runs in the background)</li>
+                <li><strong>Go to the ARB website</strong> (arbesc.arb.gov.on.ca)</li>
+                <li><strong>Enter the roll number</strong> into the search form</li>
+                <li><strong>Search for appeals</strong> related to that property</li>
+                <li><strong>Collect all appeal details</strong> including dates, decisions, and documents</li>
+                <li><strong>Save everything</strong> to your database for later review</li>
             </ol>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Where to Watch Progress</h4>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-blue-900 mb-2">🖥️ Roll Numbers Page (Main View)</h5>
+                <p class="text-sm text-blue-800 mb-2">This is your main control center. Here you'll see:</p>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• <strong>Status badges:</strong> "Processing", "Completed", or "Failed" for each roll number</li>
+                    <li>• <strong>Live progress messages:</strong> Like "Entering roll number..." or "Extracting appeal 1/3"</li>
+                    <li>• <strong>Appeals count:</strong> How many appeals were found for each property</li>
+                    <li>• <strong>Updated timestamps:</strong> When each property was last processed</li>
+                </ul>
+            </div>
+            
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-green-900 mb-2">📊 Dashboard (Quick Overview)</h5>
+                <p class="text-sm text-green-800 mb-2">Go to Dashboard to see:</p>
+                <ul class="text-sm text-green-800 space-y-1">
+                    <li>• <strong>Total progress:</strong> How many properties completed vs. remaining</li>
+                    <li>• <strong>Success rate:</strong> Percentage of successful extractions</li>
+                    <li>• <strong>Currently processing:</strong> How many are running right now</li>
+                    <li>• <strong>Recent activity:</strong> Latest completed properties</li>
+                </ul>
+            </div>
+            
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-purple-900 mb-2">📋 Scraper Logs (Detailed View)</h5>
+                <p class="text-sm text-purple-800 mb-2">For technical details and troubleshooting:</p>
+                <ul class="text-sm text-purple-800 space-y-1">
+                    <li>• <strong>Real-time activity:</strong> See exactly what CREIQ is doing right now</li>
+                    <li>• <strong>Error messages:</strong> If something goes wrong, details appear here</li>
+                    <li>• <strong>Timing information:</strong> How long each step takes</li>
+                </ul>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Understanding Status Messages</h4>
+            <div class="space-y-3">
+                <div class="flex items-start">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 mr-3">Processing</span>
+                    <div class="text-sm">
+                        <p><strong>What it means:</strong> CREIQ is currently working on this property</p>
+                        <p class="text-gray-600">You'll see messages like "Entering roll number..." or "Extracting appeal 1/3"</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 mr-3">Completed</span>
+                    <div class="text-sm">
+                        <p><strong>What it means:</strong> All appeals for this property have been collected successfully</p>
+                        <p class="text-gray-600">Click on the roll number to see all the appeal details</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 mr-3">Failed</span>
+                    <div class="text-sm">
+                        <p><strong>What it means:</strong> Something went wrong (see troubleshooting section below)</p>
+                        <p class="text-gray-600">Check the Scraper Logs for details about what happened</p>
+                    </div>
+                </div>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">How Long Does It Take?</h4>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p class="text-sm text-gray-700 mb-2">Processing time depends on how many appeals each property has:</p>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• <strong>No appeals:</strong> ~10 seconds per property</li>
+                    <li>• <strong>1-3 appeals:</strong> ~30-60 seconds per property</li>
+                    <li>• <strong>5+ appeals:</strong> ~2-3 minutes per property</li>
+                </ul>
+                <p class="text-sm text-gray-700 mt-2"><strong>Example:</strong> 10 properties with an average of 2 appeals each = about 7-10 minutes total</p>
+            </div>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-amber-900 mb-2">⏱️ Don't Close Your Browser!</h5>
+                <p class="text-sm text-amber-800">Keep your browser window open while processing. If you close it, the extraction will stop. You can continue to use other applications while CREIQ works in the background.</p>
+            </div>
         </div>
     </div>
     
     <!-- Viewing Results -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Viewing and Exporting Results</h3>
+            <h3 class="text-lg font-medium text-gray-900">Step 3: Viewing Your Results & Getting Your Data</h3>
         </div>
         <div class="p-6 prose prose-sm max-w-none">
-            <h4 class="text-base font-medium text-gray-900">Viewing Appeal Details</h4>
-            <p>To view appeals for a roll number:</p>
-            <ol>
-                <li>Go to the "Roll Numbers" page</li>
-                <li>Click on a roll number or the appeals count</li>
-                <li>View all appeal information on the detail page</li>
-            </ol>
+            <p class="text-gray-700 mb-4">Once CREIQ has finished collecting appeal data, you can review the information and export it for your analysis or reports.</p>
             
-            <h4 class="text-base font-medium text-gray-900 mt-4">Exporting Data</h4>
-            <p>You can export roll numbers and their data:</p>
-            <ul>
-                <li><strong>Export All:</strong> Exports all roll numbers in the system</li>
-                <li><strong>Export Processed:</strong> Exports only successfully processed roll numbers</li>
-            </ul>
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Viewing Appeal Details</h4>
             
-            <div class="bg-green-50 border border-green-200 rounded-md p-4 mt-4">
-                <p class="text-sm text-green-800">
-                    <strong>Note:</strong> Exported CSV files include roll numbers, property details, status, and appeal counts.
-                </p>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-blue-900 mb-2">🔍 How to View Appeals for a Property</h5>
+                <ol class="text-sm text-blue-800 space-y-1 list-decimal pl-5">
+                    <li>Go to the <strong>"Roll Numbers"</strong> page</li>
+                    <li>Find the property you want to view (look for "Completed" status)</li>
+                    <li>Click on either:
+                        <ul class="list-disc pl-5 mt-1 space-y-1">
+                            <li>The <strong>roll number</strong> (blue clickable link)</li>
+                            <li>The <strong>appeals count</strong> number (shows how many appeals were found)</li>
+                        </ul>
+                    </li>
+                    <li>This opens the <strong>Property Detail Page</strong> with all appeal information</li>
+                </ol>
+            </div>
+            
+            <h5 class="text-base font-medium text-gray-900 mt-4 mb-2">What You'll See on the Property Detail Page:</h5>
+            <div class="space-y-3">
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h6 class="font-medium text-gray-900">Property Information</h6>
+                    <p class="text-sm text-gray-600">Address, municipality, classification, and other property details</p>
+                </div>
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h6 class="font-medium text-gray-900">Appeals List</h6>
+                    <p class="text-sm text-gray-600">Each appeal shows as a separate card with all the details</p>
+                </div>
+                <div class="border-l-4 border-purple-500 pl-4">
+                    <h6 class="font-medium text-gray-900">Appeal Details Include</h6>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>• Appeal number and filing date</li>
+                        <li>• Appellant name and representative</li>
+                        <li>• Hearing dates and board order numbers</li>
+                        <li>• Appeal status (Open, Closed, etc.)</li>
+                        <li>• Decisions and decision details</li>
+                        <li>• Reason for appeal</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Exporting Your Data</h4>
+            <p>CREIQ provides several ways to get your data out for analysis or reporting:</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h5 class="font-medium text-green-900 mb-2">📊 Simple CSV Export</h5>
+                    <p class="text-sm text-green-800 mb-2"><strong>Best for:</strong> Quick lists and basic analysis</p>
+                    <p class="text-sm text-green-800 mb-2"><strong>How to export:</strong></p>
+                    <ol class="text-sm text-green-800 space-y-1 list-decimal pl-5">
+                        <li>Go to "Roll Numbers" page</li>
+                        <li>Click "Export" button at the top</li>
+                        <li>Choose "Export All" or "Export Processed"</li>
+                        <li>Save the CSV file to your computer</li>
+                    </ol>
+                    <p class="text-sm text-green-800 mt-2"><strong>Contains:</strong> Roll numbers, property descriptions, status, appeals count, dates</p>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h5 class="font-medium text-blue-900 mb-2">📋 Detailed Excel Export</h5>
+                    <p class="text-sm text-blue-800 mb-2"><strong>Best for:</strong> Complete detailed analysis</p>
+                    <p class="text-sm text-blue-800 mb-2"><strong>How to export:</strong></p>
+                    <ol class="text-sm text-blue-800 space-y-1 list-decimal pl-5">
+                        <li>Go to "Roll Numbers" page</li>
+                        <li>Click "Export with Appeals" button</li>
+                        <li>Choose what data to include</li>
+                        <li>Download the ZIP file</li>
+                        <li>Extract to find Excel files for each property</li>
+                    </ol>
+                    <p class="text-sm text-blue-800 mt-2"><strong>Contains:</strong> Complete appeal details, multiple worksheets per property</p>
+                </div>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Understanding Your Export Options</h4>
+            
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h5 class="font-medium text-gray-900 mb-2">Export Choices Explained:</h5>
+                <ul class="text-sm text-gray-700 space-y-2">
+                    <li><strong>"Export All":</strong> Includes every roll number you've uploaded, regardless of status</li>
+                    <li><strong>"Export Processed":</strong> Only includes roll numbers that completed successfully (have appeal data)</li>
+                    <li><strong>"Export with Appeals":</strong> Creates detailed Excel files with complete appeal information</li>
+                </ul>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Working with Your Exported Data</h4>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h5 class="font-medium text-yellow-900 mb-2">💡 Tips for Using Your Data</h5>
+                <ul class="text-sm text-yellow-800 space-y-1">
+                    <li>• <strong>CSV files</strong> open in Excel, Google Sheets, or any spreadsheet program</li>
+                    <li>• <strong>Excel files</strong> have multiple tabs - one for property info, one for each appeal</li>
+                    <li>• <strong>Save backups</strong> of your exported data before making changes</li>
+                    <li>• <strong>Use filters</strong> in Excel to sort by appeal status, dates, or other criteria</li>
+                    <li>• <strong>ZIP files</strong> need to be "extracted" before you can open the Excel files inside</li>
+                </ul>
+            </div>
+            
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-green-900 mb-2">✅ Data Quality Notes</h5>
+                <p class="text-sm text-green-800">All data comes directly from the ARB website, so it's as current and accurate as what you'd find by visiting the site manually. CREIQ doesn't modify or interpret the data - it simply collects exactly what's shown on the ARB appeals pages.</p>
             </div>
         </div>
     </div>
@@ -112,41 +350,79 @@
     <!-- Troubleshooting -->
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Troubleshooting</h3>
+            <h3 class="text-lg font-medium text-gray-900">Troubleshooting & Common Questions</h3>
         </div>
         <div class="p-6 prose prose-sm max-w-none">
-            <h4 class="text-base font-medium text-gray-900">Common Issues</h4>
+            <p class="text-gray-700 mb-4">Having issues? Here are solutions to the most common problems users encounter.</p>
             
-            <div class="space-y-4">
-                <div>
-                    <p class="font-medium">Extraction fails for a roll number</p>
-                    <p class="text-sm text-gray-600">Check the Scraper Logs for error details. Common causes include:</p>
-                    <ul class="text-sm text-gray-600">
-                        <li>Invalid roll number format</li>
-                        <li>Website temporarily unavailable</li>
-                        <li>Network connectivity issues</li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <p class="font-medium">Upload fails with "No valid roll numbers found"</p>
-                    <p class="text-sm text-gray-600">Ensure your CSV file:</p>
-                    <ul class="text-sm text-gray-600">
-                        <li>Contains one roll number per line</li>
-                        <li>Uses the correct format (XX-XX-XXX-XXX-XXXXX-XXXX)</li>
-                        <li>Is saved as UTF-8 encoded</li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <p class="font-medium">System seems slow</p>
-                    <p class="text-sm text-gray-600">Check the System Health page for:</p>
-                    <ul class="text-sm text-gray-600">
-                        <li>Number of active extractions</li>
-                        <li>Database status</li>
-                        <li>Consider adjusting concurrent extraction settings</li>
-                    </ul>
-                </div>
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Upload Problems</h4>
+            
+            <div class="border border-red-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-red-900 mb-2">❌ "No valid roll numbers found" error</h5>
+                <p class="text-sm text-red-800 mb-2"><strong>What this means:</strong> CREIQ couldn't read any properly formatted roll numbers from your file.</p>
+                <ul class="text-sm text-red-800 space-y-1 list-disc pl-5">
+                    <li>Check that each roll number follows this format: <code>XX-XX-XXX-XXX-XXXXX-XXXX</code></li>
+                    <li>Make sure you include all the dashes (there should be 5 dashes)</li>
+                    <li>Put only one roll number per line</li>
+                    <li>Don't include headers like "Roll Number" at the top</li>
+                    <li>Save your file as CSV format, not Excel (.xlsx)</li>
+                </ul>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Extraction Problems</h4>
+            
+            <div class="border border-red-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-red-900 mb-2">❌ Roll number shows "Failed" status</h5>
+                <p class="text-sm text-red-800 mb-2"><strong>Step 1:</strong> Check the Scraper Logs</p>
+                <ol class="text-sm text-red-800 space-y-1 list-decimal pl-5 mb-2">
+                    <li>Go to "Scraper Logs" in the main menu</li>
+                    <li>Look for error messages related to your roll number</li>
+                </ol>
+                <p class="text-sm text-red-800 mb-2"><strong>Common errors:</strong></p>
+                <ul class="text-sm text-red-800 space-y-1 list-disc pl-5">
+                    <li><strong>"Failed to submit search":</strong> ARB website might be down temporarily</li>
+                    <li><strong>"Invalid roll number":</strong> The roll number format is wrong</li>
+                    <li><strong>"Network error":</strong> Internet connection problem</li>
+                    <li><strong>"No property found":</strong> Roll number doesn't exist in ARB system</li>
+                </ul>
+                <p class="text-sm text-red-800 mt-2"><strong>Step 2:</strong> Try processing again by clicking the "Process" link next to the failed roll number.</p>
+            </div>
+            
+            <div class="border border-yellow-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-yellow-900 mb-2">⏳ Processing seems stuck or very slow</h5>
+                <p class="text-sm text-yellow-800 mb-2"><strong>This is usually normal!</strong> Processing can be slow because:</p>
+                <ul class="text-sm text-yellow-800 space-y-1 list-disc pl-5">
+                    <li>Properties with many appeals take longer (each appeal processed individually)</li>
+                    <li>ARB website responds slowly during busy periods</li>
+                    <li>Your internet connection might be slow</li>
+                </ul>
+                <p class="text-sm text-yellow-800 mt-2"><strong>What to do:</strong> Be patient and check progress messages. If stuck for more than 10 minutes, check Scraper Logs for errors.</p>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">General System Issues</h4>
+            
+            <div class="border border-blue-200 rounded-lg p-4 mb-4">
+                <h5 class="font-medium text-blue-900 mb-2">🔄 Page won't load or shows errors</h5>
+                <p class="text-sm text-blue-800 mb-2"><strong>Quick fixes:</strong></p>
+                <ol class="text-sm text-blue-800 space-y-1 list-decimal pl-5">
+                    <li>Refresh the page (press F5 or click refresh button)</li>
+                    <li>Clear your browser cache (Ctrl+Shift+R)</li>
+                    <li>Try a different browser (Chrome, Firefox, Edge)</li>
+                    <li>Check if you're still logged in</li>
+                </ol>
+            </div>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-6 mb-3">Getting More Help</h4>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <h5 class="font-medium text-blue-900 mb-2">💡 Best Practices to Avoid Problems</h5>
+                <ul class="text-sm text-blue-800 space-y-1 list-disc pl-5">
+                    <li>Always test with a small file (2-3 roll numbers) before processing large batches</li>
+                    <li>Keep your browser window open during processing</li>
+                    <li>Regularly backup your data using the Settings page</li>
+                    <li>Don't run multiple extractions at the same time</li>
+                    <li>Check the System Health page before starting large processing jobs</li>
+                </ul>
             </div>
         </div>
     </div>
