@@ -1,5 +1,8 @@
-# main.py
+#!/usr/bin/env python3
 """
-Main entry point for CREIQ Data Extraction Service for deployment.
+Entry point to expose FastAPI app.
 """
-from src.creiq.web_app import app  # Import the FastAPI app instance
+
+from src.creiq.web_app import create_app
+
+app = create_app()

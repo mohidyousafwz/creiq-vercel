@@ -37,3 +37,4 @@ memory-bank/
 htmlcov/
 .coverage
 .pytest_cache/
+.vercel
