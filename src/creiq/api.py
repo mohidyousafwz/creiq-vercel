@@ -422,6 +422,28 @@ async def delete_roll_number(
     return {"message": f"Roll number {roll_number} and associated appeals deleted successfully"}
 
 
+@app.delete("/api/appeals/{appeal_id}")
+async def delete_appeal(
+    appeal_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an individual appeal.
+    
+    Args:
+        appeal_id: The appeal ID to delete
+        
+    Returns:
+        Deletion confirmation
+    """
+    db_service = DatabaseService(db)
+    
+    if not db_service.delete_appeal(appeal_id):
+        raise HTTPException(status_code=404, detail="Appeal not found")
+    
+    return {"message": f"Appeal {appeal_id} deleted successfully"}
+
+
 @app.get("/api/stats")
 async def get_database_stats(db: Session = Depends(get_db)):
     """

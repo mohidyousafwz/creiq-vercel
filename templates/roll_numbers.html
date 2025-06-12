@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% block title %}Roll Numbers - CREIQ{% endblock %}
+{% block page_title %}Roll Numbers{% endblock %}
+
+{% block content %}
+<!-- Actions Bar -->
+<div class="bg-white shadow rounded-lg mb-6 p-4">
+    <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+        <div class="flex items-center space-x-4 w-full sm:w-auto">
+            <input type="text" id="searchInput" placeholder="Search roll numbers..." 
+                   class="px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 flex-1 sm:w-64">
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="showUploadModal()" 
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-upload mr-2"></i>Upload CSV
+            </button>
+            <div class="relative">
+                <button onclick="toggleExportMenu()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                    <i class="fas fa-download mr-2"></i>Export
+                </button>
+                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                    <a href="/api/roll-numbers/export?type=all" 
+                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export All</a>
+                    <a href="/api/roll-numbers/export?type=processed" 
+                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export Processed Only</a>
+                    <hr class="my-1 border-gray-200">
+                    <a href="/api/roll-numbers/export-with-appeals?type=all" 
+                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                       <i class="fas fa-file-excel mr-2"></i>Export All with Appeals
+                    </a>
+                    <a href="/api/roll-numbers/export-with-appeals?type=processed" 
+                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                       <i class="fas fa-file-excel mr-2"></i>Export Processed with Appeals
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="bg-white shadow rounded-lg overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Roll Number
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Address
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Appeals
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Progress
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Delete
+                </th>
+            </tr>
+        </thead>
+        <tbody id="rollNumbersTable" class="bg-white divide-y divide-gray-200">
+            <!-- Table rows will be populated by JavaScript -->
+        </tbody>
+    </table>
+    
+    <!-- Pagination -->
+    <div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+            <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Previous
+            </button>
+            <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Next
+            </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of 
+                    <span id="totalRecords">0</span> results
+                </p>
+            </div>
+            <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Upload Roll Numbers</h3>
+        <form id="uploadForm">
+            <div id="fileSelectDiv" class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select CSV File
+                </label>
+                <input type="file" id="csvFile" accept=".csv" required
+                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+            <div id="uploadResult" class="mb-4 hidden">
+                <!-- Upload results will be shown here -->
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="submit" id="uploadBtn"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    Upload
+                </button>
+                <!-- New buttons shown after upload -->
+                <button type="button" id="processManuallyBtn" onclick="processManually()" 
+                        class="hidden text-indigo-600 hover:text-indigo-800 underline text-sm">
+                    I'll do Manually
+                </button>
+                <button type="button" id="processAllBtn" onclick="processUploaded()" 
+                        class="hidden px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    Process All
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Roll Number Confirmation Modal -->
+<div id="deleteRollModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <div class="mb-4">
+            <h3 class="text-lg font-bold text-red-600 flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Delete Roll Number
+            </h3>
+        </div>
+        <div class="mb-6">
+            <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                <p class="text-sm text-red-800">
+                    <strong>Warning:</strong> This will permanently delete the roll number and all associated appeals.
+                </p>
+                <p class="text-sm text-red-800 mt-2 font-semibold">
+                    This action cannot be undone!
+                </p>
+            </div>
+            <p class="text-sm text-gray-700">
+                Are you sure you want to delete roll number <strong id="deleteRollNumber"></strong>?
+            </p>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button type="button" onclick="hideDeleteRollModal()" 
+                    class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmDeleteRoll()"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                <i class="far fa-trash-alt mr-2"></i>Delete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentPage = 0;
+    let pageSize = 50;
+    let searchQuery = '';
+    let uploadedRollNumbers = [];
+    let extractionEventSource = null;
+
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchQuery = e.target.value;
+            currentPage = 0;
+            loadRollNumbers();
+        }, 300);
+    });
+
+    // Load roll numbers
+    async function loadRollNumbers() {
+        try {
+            const response = await fetch(`/api/roll-numbers/search?q=${searchQuery}&limit=${pageSize}&offset=${currentPage * pageSize}`);
+            const data = await response.json();
+            
+            // Update table
+            const tbody = document.getElementById('rollNumbersTable');
+            tbody.innerHTML = '';
+            
+            data.roll_numbers.forEach(roll => {
+                const row = createTableRow(roll);
+                tbody.appendChild(row);
+            });
+            
+            // Update pagination
+            updatePagination(data.total);
+            
+        } catch (error) {
+            console.error('Failed to load roll numbers:', error);
+            showNotification('Failed to load roll numbers', 'error');
+        }
+    }
+
+    function createTableRow(roll) {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
+                <a href="/roll-numbers/${roll.roll_number}">${roll.roll_number}</a>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-900">
+                ${roll.property_description || '-'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                ${getStatusBadge(roll.extraction_status)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                ${roll.appeals_count > 0 ? 
+                    `<a href="/roll-numbers/${roll.roll_number}" class="text-indigo-600 hover:text-indigo-900">${roll.appeals_count}</a>` : 
+                    '0'}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                <div id="progress-${roll.roll_number}">
+                    ${roll.progress || '-'}
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <div class="flex items-center space-x-2">
+                    ${roll.extraction_status === 'pending' ? 
+                        `<button onclick="processRollNumber('${roll.roll_number}')" 
+                                 class="text-indigo-600 hover:text-indigo-900 process-btn" 
+                                 data-roll="${roll.roll_number}">Process</button>` : 
+                        '<span class="text-gray-400">-</span>'}
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                <button onclick="showDeleteRollModal('${roll.roll_number}')" 
+                        class="text-red-500 hover:text-red-700" 
+                        title="Delete roll number">
+                    <i class="far fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        return tr;
+    }
+
+    function getStatusBadge(status) {
+        const badges = {
+            'completed': '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>',
+            'processing': '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Processing</span>',
+            'failed': '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>',
+            'pending': '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Pending</span>'
+        };
+        return badges[status] || badges['pending'];
+    }
+
+    function updatePagination(total) {
+        const startIndex = currentPage * pageSize + 1;
+        const endIndex = Math.min((currentPage + 1) * pageSize, total);
+        
+        document.getElementById('startIndex').textContent = startIndex;
+        document.getElementById('endIndex').textContent = endIndex;
+        document.getElementById('totalRecords').textContent = total;
+        
+        // Update button states
+        const prevButtons = [document.getElementById('prevPage'), document.getElementById('prevPageMobile')];
+        const nextButtons = [document.getElementById('nextPage'), document.getElementById('nextPageMobile')];
+        
+        prevButtons.forEach(btn => {
+            btn.disabled = currentPage === 0;
+            btn.classList.toggle('opacity-50', currentPage === 0);
+        });
+        
+        nextButtons.forEach(btn => {
+            btn.disabled = endIndex >= total;
+            btn.classList.toggle('opacity-50', endIndex >= total);
+        });
+    }
+
+    // Pagination handlers
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 0) {
+            currentPage--;
+            loadRollNumbers();
+        }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+        currentPage++;
+        loadRollNumbers();
+    });
+
+    // Upload functionality
+    function showUploadModal() {
+        document.getElementById('uploadModal').classList.remove('hidden');
+    }
+
+    function hideUploadModal() {
+        document.getElementById('uploadModal').classList.add('hidden');
+        document.getElementById('uploadForm').reset();
+        document.getElementById('uploadResult').classList.add('hidden');
+        document.getElementById('processManuallyBtn').classList.add('hidden');
+        document.getElementById('processAllBtn').classList.add('hidden');
+        
+        // Reset file input visibility - check if elements exist first
+        const csvFile = document.getElementById('csvFile');
+        const fileLabel = document.querySelector('label[for="csvFile"]');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileSelectDiv = document.getElementById('fileSelectDiv');
+        
+        if (csvFile) csvFile.style.display = 'block';
+        if (fileLabel) fileLabel.style.display = 'block';
+        if (uploadBtn) uploadBtn.style.display = 'block';
+        if (fileSelectDiv) fileSelectDiv.style.display = 'block';
+        
+        uploadedRollNumbers = []; // Clear uploaded roll numbers
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('csvFile');
+        const file = fileInput.files[0];
+        
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/roll-numbers/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                uploadedRollNumbers = data.roll_numbers;
+                
+                // Show results
+                const resultDiv = document.getElementById('uploadResult');
+                let resultHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                        <p class="text-sm text-green-800 font-medium">
+                            ${data.message}
+                        </p>
+                `;
+                
+                // Show details about existing roll numbers if any
+                if (data.existing > 0 && data.existing_info) {
+                    resultHTML += `
+                        <div class="mt-3 text-xs text-green-700">
+                            <p class="font-medium mb-1">Existing roll numbers:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                    `;
+                    
+                    for (const [rollNumber, info] of Object.entries(data.existing_info)) {
+                        resultHTML += `
+                            <li>
+                                ${rollNumber} - 
+                                Status: <span class="font-medium">${info.status}</span>, 
+                                Appeals: <span class="font-medium">${info.appeals_count}</span>
+                                ${info.last_extracted ? `, Last extracted: ${new Date(info.last_extracted).toLocaleDateString()}` : ''}
+                            </li>
+                        `;
+                    }
+                    
+                    resultHTML += `
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                resultHTML += `</div>`;
+                resultDiv.innerHTML = resultHTML;
+                resultDiv.classList.remove('hidden');
+                
+                // Show process buttons
+                document.getElementById('processManuallyBtn').classList.remove('hidden');
+                document.getElementById('processAllBtn').classList.remove('hidden');
+                
+                // Hide file input and upload buttons
+                const csvFile = document.getElementById('csvFile');
+                const fileLabel = document.querySelector('label[for="csvFile"]');
+                const uploadBtn = document.getElementById('uploadBtn');
+                const fileSelectDiv = document.getElementById('fileSelectDiv');
+                
+                if (csvFile) csvFile.style.display = 'none';
+                if (fileLabel) fileLabel.style.display = 'none';
+                if (uploadBtn) uploadBtn.style.display = 'none';
+                if (fileSelectDiv) fileSelectDiv.style.display = 'none';
+                
+                // Reload table immediately to show newly added roll numbers
+                loadRollNumbers();
+                
+            } else {
+                throw new Error(data.detail || 'Upload failed');
+            }
+            
+        } catch (error) {
+            showNotification('Failed to upload file: ' + error.message, 'error');
+        }
+    });
+
+    function processManually() {
+        // Just close the modal - user will process individually
+        hideUploadModal();
+        showNotification('You can now process roll numbers individually from the table', 'info');
+    }
+
+    async function processUploaded() {
+        if (uploadedRollNumbers.length === 0) return;
+        
+        try {
+            const response = await fetch('/api/roll-numbers/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ roll_numbers: uploadedRollNumbers })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification(`Started processing ${data.roll_numbers.length} roll numbers`, 'success');
+                hideUploadModal();
+                
+                // Reload table to show newly added roll numbers
+                loadRollNumbers();
+                
+                // Start monitoring extraction progress
+                startExtractionMonitoring();
+                
+                // Hide process buttons for the uploaded roll numbers after a short delay (to allow table reload)
+                setTimeout(() => {
+                    data.roll_numbers.forEach(rollNumber => {
+                        const processBtn = document.querySelector(`.process-btn[data-roll="${rollNumber}"]`);
+                        if (processBtn) {
+                            processBtn.style.display = 'none';
+                        }
+                    });
+                }, 1000);
+                
+            } else {
+                throw new Error(data.detail || 'Failed to start processing');
+            }
+            
+        } catch (error) {
+            showNotification('Failed to start processing: ' + error.message, 'error');
+        }
+    }
+
+    async function processRollNumber(rollNumber) {
+        try {
+            // Hide the process button immediately to prevent double-clicking
+            const processBtn = document.querySelector(`.process-btn[data-roll="${rollNumber}"]`);
+            if (processBtn) {
+                processBtn.style.display = 'none';
+            }
+            
+            const response = await fetch('/api/roll-numbers/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ roll_numbers: [rollNumber] })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification(`Started processing ${rollNumber}`, 'success');
+                startExtractionMonitoring();
+            } else {
+                // Show the button again if processing failed
+                if (processBtn) {
+                    processBtn.style.display = 'inline';
+                }
+                throw new Error(data.detail || 'Failed to start processing');
+            }
+            
+        } catch (error) {
+            // Show the button again if there was an error
+            const processBtn = document.querySelector(`.process-btn[data-roll="${rollNumber}"]`);
+            if (processBtn) {
+                processBtn.style.display = 'inline';
+            }
+            showNotification('Failed to start processing: ' + error.message, 'error');
+        }
+    }
+
+    // Export functionality
+    function toggleExportMenu() {
+        const menu = document.getElementById('exportMenu');
+        menu.classList.toggle('hidden');
+    }
+
+    // Click outside to close export menu
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('exportMenu');
+        if (!e.target.closest('.relative') && !menu.classList.contains('hidden')) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // SSE for extraction progress
+    function startExtractionMonitoring() {
+        if (extractionEventSource) {
+            extractionEventSource.close();
+        }
+        
+        // Track which roll numbers have been marked as completed to prevent multiple updates
+        const completedRollNumbers = new Set();
+        
+        extractionEventSource = new EventSource('/api/sse/extraction-progress');
+        
+        extractionEventSource.onmessage = (event) => {
+            const extractions = JSON.parse(event.data);
+            
+            // Update progress for each extraction
+            Object.entries(extractions).forEach(([rollNumber, info]) => {
+                const progressDiv = document.getElementById(`progress-${rollNumber}`);
+                if (progressDiv) {
+                    let progressHTML = '<div class="flex items-center">';
+                    
+                    // Add spinner for processing status
+                    if (info.status === 'processing') {
+                        progressHTML += '<i class="fas fa-spinner fa-spin mr-2 text-blue-500"></i>';
+                    } else if (info.status === 'completed') {
+                        progressHTML += '<i class="fas fa-check-circle mr-2 text-green-500"></i>';
+                    } else if (info.status === 'failed') {
+                        progressHTML += '<i class="fas fa-exclamation-circle mr-2 text-red-500"></i>';
+                    } else if (info.status === 'queued') {
+                        progressHTML += '<i class="fas fa-clock mr-2 text-gray-500"></i>';
+                    }
+                    
+                    // Add progress text with appropriate styling
+                    let textClass = '';
+                    if (info.status === 'failed') {
+                        textClass = 'text-red-600 font-medium';
+                    } else if (info.status === 'completed') {
+                        textClass = 'text-green-600';
+                    } else if (info.status === 'processing') {
+                        textClass = 'text-blue-600';
+                    }
+                    
+                    progressHTML += `<span class="${textClass} text-xs">${info.progress}</span>`;
+                    progressHTML += '</div>';
+                    
+                    progressDiv.innerHTML = progressHTML;
+                    
+                    // Update the status badge and appeals count only once when transitioning to completed/failed
+                    if ((info.status === 'completed' || info.status === 'failed') && !completedRollNumbers.has(rollNumber)) {
+                        // Mark as completed to prevent future updates
+                        completedRollNumbers.add(rollNumber);
+                        
+                        // Find the status cell in the same row
+                        const row = progressDiv.closest('tr');
+                        if (row) {
+                            const statusCell = row.querySelector('td:nth-child(3)'); // Status is 3rd column (was 4th)
+                            if (statusCell) {
+                                statusCell.innerHTML = getStatusBadge(info.status === 'completed' ? 'completed' : 'failed');
+                            }
+                            
+                            // Update appeals count if completed
+                            if (info.status === 'completed' && info.progress.includes('appeals added')) {
+                                // Extract the number of appeals from the progress message
+                                const match = info.progress.match(/(\d+) new appeals added/);
+                                if (match) {
+                                    const appealsCell = row.querySelector('td:nth-child(4)'); // Appeals is 4th column (was 5th)
+                                    if (appealsCell) {
+                                        // Get current count and add new appeals
+                                        const currentCount = parseInt(appealsCell.textContent) || 0;
+                                        const newAppeals = parseInt(match[1]);
+                                        const totalAppeals = currentCount + newAppeals;
+                                        appealsCell.innerHTML = totalAppeals > 0 ? 
+                                            `<a href="/roll-numbers/${rollNumber}" class="text-indigo-600 hover:text-indigo-900">${totalAppeals}</a>` : 
+                                            '0';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        extractionEventSource.onerror = (error) => {
+            console.error('SSE error:', error);
+        };
+    }
+
+    // Delete roll number functions
+    let rollNumberToDelete = '';
+
+    function showDeleteRollModal(rollNumber) {
+        rollNumberToDelete = rollNumber;
+        document.getElementById('deleteRollNumber').textContent = rollNumber;
+        document.getElementById('deleteRollModal').classList.remove('hidden');
+    }
+
+    function hideDeleteRollModal() {
+        rollNumberToDelete = '';
+        document.getElementById('deleteRollModal').classList.add('hidden');
+    }
+
+    async function confirmDeleteRoll() {
+        if (!rollNumberToDelete) return;
+        
+        try {
+            const response = await fetch(`/api/roll_numbers/${encodeURIComponent(rollNumberToDelete)}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification(`Roll number ${rollNumberToDelete} deleted successfully`, 'success');
+                hideDeleteRollModal();
+                // Reload the table to reflect changes
+                loadRollNumbers();
+            } else {
+                throw new Error(data.detail || 'Failed to delete roll number');
+            }
+            
+        } catch (error) {
+            showNotification('Failed to delete roll number: ' + error.message, 'error');
+        }
+    }
+
+    // Load initial data
+    loadRollNumbers();
+</script>
+{% endblock %} 

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Scraper Logs - CREIQ{% endblock %}
+{% block page_title %}Scraper Logs{% endblock %}
+
+{% block content %}
+<!-- Log Filters -->
+<div class="bg-white shadow rounded-lg mb-6 p-4">
+    <div class="flex items-center space-x-4">
+        <label class="text-sm font-medium text-gray-700">Filter by level:</label>
+        <select id="logLevelFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="">All Levels</option>
+            <option value="INFO">Info</option>
+            <option value="WARNING">Warning</option>
+            <option value="ERROR">Error</option>
+        </select>
+        
+        <button onclick="clearLogs()" class="ml-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+            <i class="fas fa-trash mr-2"></i>Clear Logs
+        </button>
+    </div>
+</div>
+
+<!-- Logs Container -->
+<div class="bg-white shadow rounded-lg">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">
+            Real-time Logs
+            <span id="connectionStatus" class="ml-2 text-sm">
+                <i class="fas fa-circle text-green-500"></i> Connected
+            </span>
+        </h3>
+    </div>
+    <div class="p-4">
+        <div id="logsContainer" class="space-y-2 max-h-[600px] overflow-y-auto font-mono text-sm">
+            {% for log in initial_logs %}
+            <div class="log-entry log-{{ log.level }} p-2 rounded {{ 'bg-red-50' if log.level == 'ERROR' else 'bg-yellow-50' if log.level == 'WARNING' else 'bg-gray-50' }}">
+                <span class="text-gray-500">{{ log.timestamp }}</span>
+                <span class="font-semibold {{ 'text-red-600' if log.level == 'ERROR' else 'text-yellow-600' if log.level == 'WARNING' else 'text-gray-700' }}">[{{ log.level }}]</span>
+                <span class="text-gray-800">{{ log.message }}</span>
+                {% if log.details %}
+                <div class="ml-4 text-xs text-gray-600 mt-1">
+                    {{ log.details }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let eventSource = null;
+    const logsContainer = document.getElementById('logsContainer');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const logLevelFilter = document.getElementById('logLevelFilter');
+
+    // Connect to SSE for real-time logs
+    function connectToLogs() {
+        eventSource = new EventSource('/api/sse/logs');
+        
+        eventSource.onopen = () => {
+            updateConnectionStatus(true);
+        };
+        
+        eventSource.onmessage = (event) => {
+            const log = JSON.parse(event.data);
+            
+            if (log.type !== 'heartbeat') {
+                addLogEntry(log);
+            }
+        };
+        
+        eventSource.onerror = () => {
+            updateConnectionStatus(false);
+            // Reconnect after 5 seconds
+            setTimeout(connectToLogs, 5000);
+        };
+    }
+
+    function updateConnectionStatus(connected) {
+        if (connected) {
+            connectionStatus.innerHTML = '<i class="fas fa-circle text-green-500"></i> Connected';
+        } else {
+            connectionStatus.innerHTML = '<i class="fas fa-circle text-red-500"></i> Disconnected';
+        }
+    }
+
+    function addLogEntry(log) {
+        const selectedLevel = logLevelFilter.value;
+        if (selectedLevel && log.level !== selectedLevel) {
+            return;
+        }
+        
+        const entry = document.createElement('div');
+        entry.className = `log-entry log-${log.level} p-2 rounded ${
+            log.level === 'ERROR' ? 'bg-red-50' : 
+            log.level === 'WARNING' ? 'bg-yellow-50' : 
+            'bg-gray-50'
+        }`;
+        
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const levelColor = log.level === 'ERROR' ? 'text-red-600' : 
+                          log.level === 'WARNING' ? 'text-yellow-600' : 
+                          'text-gray-700';
+        
+        entry.innerHTML = `
+            <span class="text-gray-500">${timestamp}</span>
+            <span class="font-semibold ${levelColor}">[${log.level}]</span>
+            <span class="text-gray-800">${log.message}</span>
+            ${log.details ? `
+                <div class="ml-4 text-xs text-gray-600 mt-1">
+                    ${JSON.stringify(log.details)}
+                </div>
+            ` : ''}
+        `;
+        
+        // Add to top of container
+        logsContainer.insertBefore(entry, logsContainer.firstChild);
+        
+        // Keep only last 500 entries
+        while (logsContainer.children.length > 500) {
+            logsContainer.removeChild(logsContainer.lastChild);
+        }
+        
+        // Auto-scroll to top
+        logsContainer.scrollTop = 0;
+    }
+
+    function clearLogs() {
+        if (confirm('Are you sure you want to clear all logs?')) {
+            logsContainer.innerHTML = '';
+            showNotification('Logs cleared', 'success');
+        }
+    }
+
+    // Filter logs
+    logLevelFilter.addEventListener('change', () => {
+        const selectedLevel = logLevelFilter.value;
+        const entries = logsContainer.querySelectorAll('.log-entry');
+        
+        entries.forEach(entry => {
+            if (selectedLevel === '' || entry.classList.contains(`log-${selectedLevel}`)) {
+                entry.style.display = 'block';
+            } else {
+                entry.style.display = 'none';
+            }
+        });
+    });
+
+    // Connect on load
+    connectToLogs();
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (eventSource) {
+            eventSource.close();
+        }
+    });
+</script>
+{% endblock %} 

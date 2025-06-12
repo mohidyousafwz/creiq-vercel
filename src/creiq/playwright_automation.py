@@ -9,6 +9,8 @@ import traceback # Ensure traceback is imported
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
+from src.creiq.utils.logger import logger
+from src.creiq.config.settings import SAVE_SCREENSHOTS
 
 # Fix for Windows asyncio issues
 import sys
@@ -631,6 +633,134 @@ class PlaywrightAutomation:
         
         logger.info(f"Extracted details for {len(all_appeals_details['appeals'])} appeals")
         return all_appeals_details
+    
+    def extract_single_appeal_detail(self, appeal_summary: Dict[str, Any], output_dir: str = None) -> Dict[str, Any]:
+        """
+        Extract detailed information for a single appeal.
+        This method is used for progressive extraction.
+        """
+        appeal_number = appeal_summary.get("appealnumber", "")
+        if not appeal_number:
+            raise ValueError("No appeal number provided")
+        
+        logger.info(f"Extracting details for appeal: {appeal_number}")
+        
+        try:
+            # Click on the appeal link to navigate to detail page
+            appeal_link_selector = f'a[href*="ComplaintDetail.aspx?AppealNo={appeal_number}"]'
+            self.page.click(appeal_link_selector)
+            self._check_shutdown()
+            
+            # Wait for the detail page to load
+            self.page.wait_for_load_state("networkidle", timeout=20000)
+            
+            # Extract detailed appeal information
+            appeal_detail = {
+                "appeal_number": appeal_number,
+                "extracted_timestamp": datetime.datetime.now().isoformat(),
+                "property_info": {},
+                "appellant_info": {},
+                "status_info": {},
+                "decision_info": {}
+            }
+            
+            # Extract property information
+            property_mappings = [
+                ('roll_number', 'Property Roll Number:'),
+                ('municipality', 'Municipality:'),
+                ('classification', 'Property Classification:'),
+                ('nbhd', 'NBHD:')
+            ]
+            
+            for field_name, label_text in property_mappings:
+                try:
+                    selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                    element = self.page.query_selector(selector)
+                    if element:
+                        value = element.text_content().strip()
+                        if field_name == 'roll_number':
+                            link = element.query_selector('a')
+                            if link:
+                                value = link.text_content().strip()
+                        appeal_detail["property_info"][field_name] = value
+                except Exception as e:
+                    logger.debug(f"Could not extract {field_name}: {e}")
+            
+            # Extract appellant information
+            appellant_mappings = [
+                ('name1', 'Name1:'),
+                ('name2', 'Name2:'),
+                ('representative', 'Name of Representative:'),
+                ('filing_date', 'Filing Date:'),
+                ('tax_date', 'Tax Date:'),
+                ('section', 'Section:'),
+                ('reason_for_appeal', 'Reason for Appeal:')
+            ]
+            
+            for field_name, label_text in appellant_mappings:
+                try:
+                    selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                    element = self.page.query_selector(selector)
+                    if element:
+                        value = element.text_content().strip()
+                        if field_name == 'reason_for_appeal':
+                            value = value.replace('\n', '')
+                        appeal_detail["appellant_info"][field_name] = value
+                except Exception as e:
+                    logger.debug(f"Could not extract {field_name}: {e}")
+            
+            # Extract status information
+            try:
+                status_selector = 'div.row:has(div:has-text("Status:")) div.col-md-4:nth-child(2)'
+                status_element = self.page.query_selector(status_selector)
+                if status_element:
+                    appeal_detail["status_info"]["status"] = status_element.text_content().strip()
+            except Exception as e:
+                logger.debug(f"Could not extract status: {e}")
+            
+            # Extract decision information
+            decision_mappings = [
+                ('decision_number', 'Decision Number:'),
+                ('mailing_date', 'Decision Mailing Date:'),
+                ('decisions', 'Decision(s):'),
+                ('decision_details', 'DecisionDetails:')
+            ]
+            
+            for field_name, label_text in decision_mappings:
+                try:
+                    selector = f'div.row:has(div:has-text("{label_text}")) div.col-md-4:nth-child(2)'
+                    element = self.page.query_selector(selector)
+                    if element:
+                        value = element.text_content().strip()
+                        if field_name in ['decisions', 'decision_details']:
+                            value = value.replace('\n', '')
+                        appeal_detail["decision_info"][field_name] = value
+                except Exception as e:
+                    logger.debug(f"Could not extract {field_name}: {e}")
+            
+            # Take a screenshot if output directory is provided
+            if output_dir:
+                try:
+                    screenshot_path = os.path.join(output_dir, f"appeal_{appeal_number}_detail.png")
+                    self.take_screenshot(screenshot_path)
+                except:
+                    pass
+            
+            # Navigate back to the appeals list
+            self.page.go_back()
+            self.page.wait_for_load_state("networkidle", timeout=10000)
+            
+            logger.info(f"Successfully extracted details for appeal {appeal_number}")
+            return appeal_detail
+            
+        except Exception as e:
+            logger.error(f"Error extracting details for appeal {appeal_number}: {e}")
+            # Try to recover by navigating back
+            try:
+                self.page.go_back()
+            except:
+                pass
+            raise
 
     def save_json_data(self, data: Dict[str, Any], file_path: str) -> None:
         """
@@ -673,9 +803,15 @@ class PlaywrightAutomation:
     
     def take_screenshot(self, file_path: str) -> None:
         """
-        Take a screenshot of the current page state.
+        Take a screenshot of the current page state if SAVE_SCREENSHOTS is enabled.
         """
         self._check_shutdown()
+        
+        # Check if screenshots are enabled
+        if not SAVE_SCREENSHOTS:
+            logger.debug(f"Screenshots disabled in configuration, skipping: {file_path}")
+            return
+            
         if not self.page:
             raise RuntimeError("Browser not started. Call start_browser() first.")
         try:

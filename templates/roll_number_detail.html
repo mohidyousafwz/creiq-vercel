@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}{{ roll_number.roll_number }} - CREIQ{% endblock %}
+{% block page_title %}Roll Number Details{% endblock %}
+
+{% block content %}
+<!-- Roll Number Information -->
+<div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Roll Number: {{ roll_number.roll_number }}</h3>
+    </div>
+    <div class="px-6 py-4">
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Property Description</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ roll_number.property_description or '-' }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Municipality</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ roll_number.municipality or '-' }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Classification</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ roll_number.classification or '-' }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Neighbourhood</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ roll_number.nbhd or '-' }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1">
+                    {% if roll_number.extraction_status == 'completed' %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Completed
+                    </span>
+                    {% elif roll_number.extraction_status == 'processing' %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        Processing
+                    </span>
+                    {% elif roll_number.extraction_status == 'failed' %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                        Failed
+                    </span>
+                    {% else %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                        {{ roll_number.extraction_status }}
+                    </span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Last Extracted</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ roll_number.last_extracted_at|datetime if roll_number.last_extracted_at else '-' }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<!-- Appeals -->
+<div class="bg-white shadow rounded-lg">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Appeals ({{ roll_number.appeals|length }})</h3>
+    </div>
+    
+    {% if roll_number.appeals %}
+    <div class="divide-y divide-gray-200">
+        {% for appeal in roll_number.appeals %}
+        <div class="p-6">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <h4 class="text-base font-medium text-gray-900 mb-2">
+                        Appeal #{{ appeal.appeal_number }}
+                    </h4>
+                    
+                    <!-- Summary Information -->
+                    <div class="mb-4">
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Summary Information</h5>
+                        <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 text-sm">
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Appellant:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.appellant or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Representative:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.representative or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Status:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.status or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Hearing Date:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.hearing_date or '-' }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    
+                    <!-- Appellant Information -->
+                    {% if appeal.appellant_name1 or appeal.filing_date %}
+                    <div class="mb-4">
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Appellant Details</h5>
+                        <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 text-sm">
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Name:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.appellant_name1 or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Filing Date:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.filing_date or '-' }}</dd>
+                            </div>
+                        </dl>
+                        {% if appeal.reason_for_appeal %}
+                        <div class="mt-2">
+                            <dt class="font-medium text-gray-500 text-sm">Reason for Appeal:</dt>
+                            <dd class="mt-1 text-gray-900 text-sm">{{ appeal.reason_for_appeal }}</dd>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Decision Information -->
+                    {% if appeal.decision_number %}
+                    <div class="mb-4">
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Decision Information</h5>
+                        <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 text-sm">
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Decision Number:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.decision_number or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-500">Mailing Date:</dt>
+                                <dd class="inline text-gray-900 ml-1">{{ appeal.decision_mailing_date or '-' }}</dd>
+                            </div>
+                        </dl>
+                        {% if appeal.decisions %}
+                        <div class="mt-2">
+                            <dt class="font-medium text-gray-500 text-sm">Decisions:</dt>
+                            <dd class="mt-1 text-gray-900 text-sm">{{ appeal.decisions }}</dd>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Delete action -->
+                <div class="ml-4">
+                    <button onclick="showDeleteAppealModal(this)" 
+                            data-appeal-id="{{ appeal.id }}"
+                            data-appeal-number="{{ appeal.appeal_number }}"
+                            class="text-red-500 hover:text-red-700 text-sm"
+                            title="Delete appeal">
+                        <i class="far fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-6 text-center text-gray-500">
+        No appeals found for this roll number.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Actions -->
+<div class="mt-6 flex justify-end space-x-3">
+    <a href="/roll-numbers" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        Back to List
+    </a>
+    {% if roll_number.extraction_status != 'processing' %}
+    <button onclick="reprocessRollNumber('{{ roll_number.roll_number }}')" 
+            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        <i class="fas fa-refresh mr-2"></i>Re-process
+    </button>
+    {% endif %}
+</div>
+
+<!-- Delete Appeal Confirmation Modal -->
+<div id="deleteAppealModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <div class="mb-4">
+            <h3 class="text-lg font-bold text-red-600 flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Delete Appeal
+            </h3>
+        </div>
+        <div class="mb-6">
+            <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                <p class="text-sm text-red-800">
+                    <strong>Warning:</strong> This will permanently delete the appeal record.
+                </p>
+                <p class="text-sm text-red-800 mt-2 font-semibold">
+                    This action cannot be undone!
+                </p>
+            </div>
+            <p class="text-sm text-gray-700">
+                Are you sure you want to delete appeal <strong id="deleteAppealNumber"></strong>?
+            </p>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button type="button" onclick="hideDeleteAppealModal()" 
+                    class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmDeleteAppeal()"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                <i class="far fa-trash-alt mr-2"></i>Delete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    async function reprocessRollNumber(rollNumber) {
+        if (!confirm('Are you sure you want to re-process this roll number?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/roll-numbers/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ roll_numbers: [rollNumber] })
+            });
+            
+            if (response.ok) {
+                showNotification('Re-processing started', 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                throw new Error('Failed to start re-processing');
+            }
+        } catch (error) {
+            showNotification('Failed to re-process: ' + error.message, 'error');
+        }
+    }
+
+    // Delete appeal functions
+    let appealIdToDelete = '';
+    let appealNumberToDelete = '';
+
+    function showDeleteAppealModal(button) {
+        appealIdToDelete = button.getAttribute('data-appeal-id');
+        appealNumberToDelete = button.getAttribute('data-appeal-number');
+        document.getElementById('deleteAppealNumber').textContent = appealNumberToDelete;
+        document.getElementById('deleteAppealModal').classList.remove('hidden');
+    }
+
+    function hideDeleteAppealModal() {
+        appealIdToDelete = '';
+        appealNumberToDelete = '';
+        document.getElementById('deleteAppealModal').classList.add('hidden');
+    }
+
+    async function confirmDeleteAppeal() {
+        if (!appealIdToDelete) return;
+        
+        try {
+            const response = await fetch(`/api/appeals/${appealIdToDelete}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification(`Appeal ${appealNumberToDelete} deleted successfully`, 'success');
+                hideDeleteAppealModal();
+                // Reload the page to reflect changes
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                throw new Error(data.detail || 'Failed to delete appeal');
+            }
+            
+        } catch (error) {
+            showNotification('Failed to delete appeal: ' + error.message, 'error');
+        }
+    }
+</script>
+{% endblock %} 

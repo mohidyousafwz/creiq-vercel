@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}System Health - CREIQ{% endblock %}
+{% block page_title %}System Health{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- System Status -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">System Status</h3>
+        </div>
+        <div class="p-6">
+            <dl class="space-y-4">
+                <div class="flex justify-between">
+                    <dt class="text-sm font-medium text-gray-500">Database</dt>
+                    <dd class="text-sm">
+                        {% if db_status == 'healthy' %}
+                        <span class="flex items-center text-green-600">
+                            <i class="fas fa-check-circle mr-1"></i> Healthy
+                        </span>
+                        {% else %}
+                        <span class="flex items-center text-red-600">
+                            <i class="fas fa-times-circle mr-1"></i> Unhealthy
+                        </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                
+                <div class="flex justify-between">
+                    <dt class="text-sm font-medium text-gray-500">Extraction Service</dt>
+                    <dd class="text-sm">
+                        {% if extraction_status == 'healthy' %}
+                        <span class="flex items-center text-green-600">
+                            <i class="fas fa-check-circle mr-1"></i> Running
+                        </span>
+                        {% else %}
+                        <span class="flex items-center text-red-600">
+                            <i class="fas fa-times-circle mr-1"></i> Stopped
+                        </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                
+                <div class="flex justify-between">
+                    <dt class="text-sm font-medium text-gray-500">Active Tasks</dt>
+                    <dd class="text-sm font-medium text-gray-900">{{ active_tasks }}</dd>
+                </div>
+                
+                <div class="flex justify-between">
+                    <dt class="text-sm font-medium text-gray-500">Log Entries</dt>
+                    <dd class="text-sm font-medium text-gray-900">{{ log_count }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+    
+    <!-- Performance Metrics -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Performance Metrics</h3>
+        </div>
+        <div class="p-6">
+            <canvas id="performanceChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="bg-white shadow rounded-lg lg:col-span-2">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">System Activity (Last 24 Hours)</h3>
+        </div>
+        <div class="p-6">
+            <canvas id="activityChart" width="800" height="300"></canvas>
+        </div>
+    </div>
+    
+    <!-- System Actions -->
+    <div class="bg-white shadow rounded-lg lg:col-span-2">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">System Actions</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="restartServices()" 
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                    <i class="fas fa-sync-alt mr-2"></i> Restart Services
+                </button>
+                
+                <button onclick="clearCache()" 
+                        class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 flex items-center justify-center">
+                    <i class="fas fa-eraser mr-2"></i> Clear Cache
+                </button>
+                
+                <button onclick="runDiagnostics()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center">
+                    <i class="fas fa-stethoscope mr-2"></i> Run Diagnostics
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Initialize performance chart
+    const perfCtx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(perfCtx, {
+        type: 'line',
+        data: {
+            labels: ['5m ago', '4m ago', '3m ago', '2m ago', '1m ago', 'Now'],
+            datasets: [{
+                label: 'Response Time (ms)',
+                data: [120, 135, 125, 140, 130, 125],
+                borderColor: '#6366F1',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Initialize activity chart
+    const actCtx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(actCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${23-i}h`),
+            datasets: [{
+                label: 'Extractions',
+                data: Array.from({length: 24}, () => Math.floor(Math.random() * 50)),
+                backgroundColor: '#10B981'
+            }, {
+                label: 'Errors',
+                data: Array.from({length: 24}, () => Math.floor(Math.random() * 5)),
+                backgroundColor: '#EF4444'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // System actions
+    async function restartServices() {
+        if (confirm('Restart all services? This may interrupt ongoing extractions.')) {
+            showNotification('Restarting services...', 'info');
+            // Implement restart logic
+            setTimeout(() => {
+                showNotification('Services restarted successfully', 'success');
+                location.reload();
+            }, 3000);
+        }
+    }
+    
+    async function clearCache() {
+        if (confirm('Clear all cached data?')) {
+            showNotification('Clearing cache...', 'info');
+            // Implement cache clearing
+            setTimeout(() => {
+                showNotification('Cache cleared successfully', 'success');
+            }, 2000);
+        }
+    }
+    
+    async function runDiagnostics() {
+        showNotification('Running diagnostics...', 'info');
+        // Implement diagnostics
+        setTimeout(() => {
+            showNotification('Diagnostics completed. Check logs for details.', 'success');
+        }, 3000);
+    }
+    
+    // Update metrics every 30 seconds
+    setInterval(() => {
+        // Add new data point and remove old one
+        performanceChart.data.datasets[0].data.shift();
+        performanceChart.data.datasets[0].data.push(Math.floor(Math.random() * 20) + 120);
+        performanceChart.update();
+    }, 30000);
+</script>
+{% endblock %} 

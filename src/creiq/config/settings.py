@@ -12,9 +12,13 @@ load_dotenv()
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
-RESULTS_DIR = DATA_DIR / "results"
 TEST_EXTRACTION_DIR = DATA_DIR / "test_extraction"
 SAMPLE_DATA_DIR = DATA_DIR / "sample_upload_files"
+
+# Optional: Output Settings - Load early to use in directory creation
+RESULTS_DIR = Path(os.getenv("RESULTS_DIR", str(DATA_DIR / "results")))
+SAVE_HTML = os.getenv("SAVE_HTML", "true").lower() == "true"
+SAVE_SCREENSHOTS = os.getenv("SAVE_SCREENSHOTS", "false").lower() == "true"
 
 # Ensure directories exist
 for dir_path in [DATA_DIR, RESULTS_DIR, TEST_EXTRACTION_DIR]:
@@ -48,4 +52,12 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./creiq.db")
 
 # Authentication Configuration (for future use)
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")) 
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+
+# Dashboard Authentication
+PASSCODE = os.getenv("PASSCODE", "1234")  # Default passcode for development
+SESSION_DURATION_DAYS = 90  # 3 months
+
+# Optional: Processing Settings
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3").split('#')[0].strip())
+RETRY_DELAY = int(os.getenv("RETRY_DELAY", "5").split('#')[0].strip()) 

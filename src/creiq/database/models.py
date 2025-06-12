@@ -27,6 +27,11 @@ class RollNumber(Base):
     extraction_status = Column(String(50), default="pending")  # pending, processing, completed, failed
     extraction_error = Column(Text, nullable=True)
     
+    # Extraction progress tracking
+    total_appeals_found = Column(Integer, nullable=True)  # Total appeals found on the main page
+    appeals_extracted = Column(Integer, default=0)  # Number of appeals successfully extracted
+    extraction_progress = Column(JSON, nullable=True)  # Detailed progress info (e.g., which appeals are done)
+    
     # Relationships
     appeals = relationship("Appeal", back_populates="roll_number_ref", cascade="all, delete-orphan")
     

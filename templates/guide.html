@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}User Guide - CREIQ ARB Extractor{% endblock %}
+{% block page_title %}User Guide{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <!-- Introduction -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Getting Started</h3>
+        </div>
+        <div class="p-6 prose prose-sm max-w-none">
+            <p>Welcome to the CREIQ Data Extraction System. This guide will help you understand how to use the system effectively.</p>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-4">What is CREIQ Data Extraction System?</h4>
+            <p>CREIQ Data Extraction System is an automated system that extracts appeal data from the ARB (Assessment Review Board) website. It helps you:</p>
+            <ul>
+                <li>Manage roll numbers and their associated appeals</li>
+                <li>Automatically extract appeal information</li>
+                <li>Track extraction progress in real-time</li>
+                <li>Export data for further analysis</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Uploading Roll Numbers -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Uploading Roll Numbers</h3>
+        </div>
+        <div class="p-6 prose prose-sm max-w-none">
+            <h4 class="text-base font-medium text-gray-900">CSV File Format</h4>
+            <p>To upload roll numbers, prepare a CSV file with the following format:</p>
+            <pre class="bg-gray-100 p-3 rounded">38-29-300-012-10400-0000
+38-29-300-012-10500-0000
+38-29-300-012-10600-0000</pre>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-4">Upload Process</h4>
+            <ol>
+                <li>Go to the "Roll Numbers" page</li>
+                <li>Click the "Upload CSV" button</li>
+                <li>Select your CSV file</li>
+                <li>Review the upload summary</li>
+                <li>Click "Process All" to start extraction</li>
+            </ol>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4">
+                <p class="text-sm text-blue-800">
+                    <strong>Tip:</strong> The system will automatically detect duplicate roll numbers and only process new ones.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monitoring Extraction -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Monitoring Extraction Progress</h3>
+        </div>
+        <div class="p-6 prose prose-sm max-w-none">
+            <h4 class="text-base font-medium text-gray-900">Real-time Progress</h4>
+            <p>During extraction, you can monitor progress in real-time:</p>
+            <ul>
+                <li><strong>Roll Numbers Page:</strong> Shows progress for each roll number being processed</li>
+                <li><strong>Dashboard:</strong> Displays overall extraction statistics</li>
+                <li><strong>Scraper Logs:</strong> Provides detailed extraction logs</li>
+            </ul>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-4">Extraction Steps</h4>
+            <p>Each roll number goes through the following steps:</p>
+            <ol>
+                <li>Opening browser</li>
+                <li>Navigating to ARB website</li>
+                <li>Entering roll number</li>
+                <li>Searching for appeals</li>
+                <li>Extracting appeal details</li>
+                <li>Saving results to database</li>
+            </ol>
+        </div>
+    </div>
+    
+    <!-- Viewing Results -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Viewing and Exporting Results</h3>
+        </div>
+        <div class="p-6 prose prose-sm max-w-none">
+            <h4 class="text-base font-medium text-gray-900">Viewing Appeal Details</h4>
+            <p>To view appeals for a roll number:</p>
+            <ol>
+                <li>Go to the "Roll Numbers" page</li>
+                <li>Click on a roll number or the appeals count</li>
+                <li>View all appeal information on the detail page</li>
+            </ol>
+            
+            <h4 class="text-base font-medium text-gray-900 mt-4">Exporting Data</h4>
+            <p>You can export roll numbers and their data:</p>
+            <ul>
+                <li><strong>Export All:</strong> Exports all roll numbers in the system</li>
+                <li><strong>Export Processed:</strong> Exports only successfully processed roll numbers</li>
+            </ul>
+            
+            <div class="bg-green-50 border border-green-200 rounded-md p-4 mt-4">
+                <p class="text-sm text-green-800">
+                    <strong>Note:</strong> Exported CSV files include roll numbers, property details, status, and appeal counts.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Troubleshooting -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Troubleshooting</h3>
+        </div>
+        <div class="p-6 prose prose-sm max-w-none">
+            <h4 class="text-base font-medium text-gray-900">Common Issues</h4>
+            
+            <div class="space-y-4">
+                <div>
+                    <p class="font-medium">Extraction fails for a roll number</p>
+                    <p class="text-sm text-gray-600">Check the Scraper Logs for error details. Common causes include:</p>
+                    <ul class="text-sm text-gray-600">
+                        <li>Invalid roll number format</li>
+                        <li>Website temporarily unavailable</li>
+                        <li>Network connectivity issues</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <p class="font-medium">Upload fails with "No valid roll numbers found"</p>
+                    <p class="text-sm text-gray-600">Ensure your CSV file:</p>
+                    <ul class="text-sm text-gray-600">
+                        <li>Contains one roll number per line</li>
+                        <li>Uses the correct format (XX-XX-XXX-XXX-XXXXX-XXXX)</li>
+                        <li>Is saved as UTF-8 encoded</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <p class="font-medium">System seems slow</p>
+                    <p class="text-sm text-gray-600">Check the System Health page for:</p>
+                    <ul class="text-sm text-gray-600">
+                        <li>Number of active extractions</li>
+                        <li>Database status</li>
+                        <li>Consider adjusting concurrent extraction settings</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

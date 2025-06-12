@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CREIQ Dashboard">
+    <meta name="author" content="Whizzbridge">
+
+    <!-- Icon -->
+    <link rel="icon" href="/static/img/creiq.ico" type="image/ico">
+
+    <title>{% block title %}CREIQ Dashboard{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        .sidebar-item {
+            @apply flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 transform;
+        }
+        .sidebar-item:hover {
+            @apply bg-gray-50 translate-x-1 shadow-sm;
+        }
+        .sidebar-item.active {
+            @apply bg-indigo-50 text-indigo-700 shadow-sm;
+        }
+        .sidebar-item:hover .sidebar-icon {
+            @apply scale-110;
+        }
+        .sidebar-icon {
+            @apply transition-transform duration-200;
+        }
+        .sidebar-divider {
+            @apply my-3 border-t border-gray-200;
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full">
+    {% if request.session.authenticated %}
+    <!-- Authenticated Layout -->
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg flex flex-col">
+            <!-- Logo -->
+            <div class="flex items-center justify-center h-16 bg-gradient-to-r from-white to-purple-100 shadow-md">
+                <img src="/static/img/logo.png" alt="CREIQ" class="h-10 w-auto">
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 px-4 py-6 overflow-y-auto">
+                <div class="space-y-2">
+                    
+                    <!-- Dashboard Section -->
+                    <div class="px-4 py-2">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Extraction</p>
+                    </div>
+                    <!-- Main Navigation -->
+                    <a href="/dashboard" class="sidebar-item {% if request.url.path == '/dashboard' %}active{% endif %} block group">
+                        <i class="fas fa-dashboard mr-3 sidebar-icon text-indigo-500 group-hover:text-indigo-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">Dashboard</span>
+                    </a>
+                    
+                    <a href="/roll-numbers" class="sidebar-item {% if request.url.path == '/roll-numbers' %}active{% endif %} block group">
+                        <i class="fas fa-list mr-3 sidebar-icon text-emerald-500 group-hover:text-emerald-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">Roll Numbers</span>
+                    </a>
+                    <br/>
+                    <!-- Divider -->
+                    <div class="sidebar-divider"></div>
+                    
+                    <!-- Monitoring Section -->
+                    <div class="px-4 py-2">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Monitoring</p>
+                    </div>
+                    
+                    <a href="/logs" class="sidebar-item {% if request.url.path == '/logs' %}active{% endif %} block group">
+                        <i class="fas fa-file-lines mr-3 sidebar-icon text-amber-500 group-hover:text-amber-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">Scraper Logs</span>
+                    </a>
+                    
+                    <a href="/health-status" class="sidebar-item {% if request.url.path == '/health-status' %}active{% endif %} block group">
+                        <i class="fas fa-heart-pulse mr-3 sidebar-icon text-pink-500 group-hover:text-pink-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">System Health</span>
+                    </a>
+                    <br/>
+                    <!-- Divider -->
+                    <div class="sidebar-divider"></div>
+                    <!-- Divider -->
+                    <div class="sidebar-divider"></div>
+                    
+                    <!-- Configuration Section -->
+                    <div class="px-4 py-2">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Configuration</p>
+                    </div>
+                    
+                    <a href="/settings" class="sidebar-item {% if request.url.path == '/settings' %}active{% endif %} block group">
+                        <i class="fas fa-cog mr-3 sidebar-icon text-gray-500 group-hover:text-gray-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">Settings</span>
+                    </a>
+                    
+                    <a href="/guide" class="sidebar-item {% if request.url.path == '/guide' %}active{% endif %} block group">
+                        <i class="fas fa-book mr-3 sidebar-icon text-sky-500 group-hover:text-sky-600"></i>
+                        <span class="text-gray-700 group-hover:text-gray-900">User Guide</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <!-- Footer -->
+            <div class="p-4 text-center text-xs text-gray-500 border-t bg-gray-50">
+                <p>Built with <span class="text-red-500 animate-pulse">❤</span> by <a href="http://whizzbridge.com" target="_blank">Whizzbridge</a></p>
+            </div>
+            
+            <!-- User Menu -->
+            <div class="p-4 border-t bg-white">
+                <a href="/logout" class="sidebar-item text-red-600 hover:text-red-700 hover:bg-red-50 block group">
+                    <i class="fas fa-sign-out-alt mr-3 sidebar-icon group-hover:scale-110"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Header -->
+            <header class="bg-white shadow-sm">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-800">{% block page_title %}{% endblock %}</h2>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <main class="flex-1 overflow-y-auto bg-gray-50">
+                <div class="p-6">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+    {% else %}
+    <!-- Non-authenticated Layout -->
+    {% block auth_content %}{% endblock %}
+    {% endif %}
+    
+    <!-- Common Scripts -->
+    <script>
+        // Global utilities
+        function showNotification(message, type = 'info') {
+            const colors = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-0`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.add('translate-x-0');
+            }, 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html> 

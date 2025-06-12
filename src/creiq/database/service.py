@@ -59,6 +59,42 @@ class DatabaseService:
             logger.error(f"Error updating status for {roll_number}: {e}")
             raise
     
+    def update_extraction_progress(self, roll_number: str, total_appeals: int = None, 
+                                 appeals_extracted: int = None, progress_data: Dict[str, Any] = None) -> None:
+        """Update extraction progress for a roll number."""
+        try:
+            roll_record = self.db.query(RollNumber).filter(RollNumber.roll_number == roll_number).first()
+            if roll_record:
+                if total_appeals is not None:
+                    roll_record.total_appeals_found = total_appeals
+                if appeals_extracted is not None:
+                    roll_record.appeals_extracted = appeals_extracted
+                if progress_data is not None:
+                    roll_record.extraction_progress = progress_data
+                self.db.commit()
+                logger.info(f"Updated extraction progress for {roll_number}: {appeals_extracted}/{total_appeals}")
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error updating extraction progress for {roll_number}: {e}")
+            raise
+    
+    def get_extraction_progress(self, roll_number: str) -> Dict[str, Any]:
+        """Get extraction progress for a roll number."""
+        roll_record = self.db.query(RollNumber).filter(RollNumber.roll_number == roll_number).first()
+        if roll_record:
+            return {
+                "total_appeals_found": roll_record.total_appeals_found or 0,
+                "appeals_extracted": roll_record.appeals_extracted or 0,
+                "extraction_progress": roll_record.extraction_progress or {},
+                "extracted_appeal_numbers": {appeal.appeal_number for appeal in roll_record.appeals if appeal.detail_data}
+            }
+        return {
+            "total_appeals_found": 0,
+            "appeals_extracted": 0,
+            "extraction_progress": {},
+            "extracted_appeal_numbers": set()
+        }
+    
     def create_or_update_appeal(self, appeal_data: Dict[str, Any], roll_number: str) -> Appeal:
         """Create or update an appeal record."""
         try:
@@ -207,4 +243,56 @@ class DatabaseService:
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error deleting roll number {roll_number}: {e}")
+            raise
+    
+    def delete_appeal(self, appeal_id: int) -> bool:
+        """Delete individual appeal by ID."""
+        try:
+            appeal = self.db.query(Appeal).filter(Appeal.id == appeal_id).first()
+            if appeal:
+                self.db.delete(appeal)
+                self.db.commit()
+                logger.info(f"Deleted appeal: {appeal_id}")
+                return True
+            return False
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error deleting appeal {appeal_id}: {e}")
+            raise
+    
+    def save_single_appeal(self, roll_number: str, appeal_summary: Dict[str, Any], 
+                          appeal_detail: Dict[str, Any] = None) -> Appeal:
+        """Save a single appeal with its details (progressive saving)."""
+        try:
+            # Create/update appeal from summary
+            appeal = self.create_or_update_appeal(appeal_summary, roll_number)
+            
+            # Update with details if provided
+            if appeal_detail:
+                self.update_appeal_details(appeal.appeal_number, appeal_detail)
+            
+            # Update extraction progress
+            roll_record = self.db.query(RollNumber).filter(RollNumber.roll_number == roll_number).first()
+            if roll_record:
+                current_count = roll_record.appeals_extracted or 0
+                roll_record.appeals_extracted = current_count + 1
+                
+                # Update progress tracking
+                progress = roll_record.extraction_progress or {}
+                if "extracted_appeals" not in progress:
+                    progress["extracted_appeals"] = []
+                progress["extracted_appeals"].append({
+                    "appeal_number": appeal.appeal_number,
+                    "extracted_at": datetime.utcnow().isoformat()
+                })
+                roll_record.extraction_progress = progress
+                
+                self.db.commit()
+                logger.info(f"Saved appeal {appeal.appeal_number} for roll {roll_number} (progress: {roll_record.appeals_extracted}/{roll_record.total_appeals_found})")
+            
+            return appeal
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error saving single appeal: {e}")
             raise 
